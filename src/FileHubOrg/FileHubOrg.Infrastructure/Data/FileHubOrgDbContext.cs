@@ -1,5 +1,6 @@
 ﻿using FileHubOrg.Domain.Entities.File;
 using FileHubOrg.Domain.Entities.Organization;
+using FileHubOrg.Domain.Entities.Token;
 using FileHubOrg.Domain.Entities.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -20,5 +21,6 @@ namespace FileHubOrg.Infrastructure.Data
 
         public DbSet<Department> Departments { get; set; }
         public DbSet<FileMetaData> FileMetaData { get; set; }
+        public DbSet<JWT> JWTs { get; set; }
     }
 }
