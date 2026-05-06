@@ -11,7 +11,7 @@ namespace FileHubOrg.Domain.Entities.File
     {
 
         public Guid FileMetadataId { get; set; }
-        public Guid AssignedToId { get; set; }
+        public string AssignedToId { get; set; } = string.Empty;
         public virtual FileMetaData FileMetaData {  get; set; }
         public virtual ApplicationUser AssignedTo {  get; set; }
     }
