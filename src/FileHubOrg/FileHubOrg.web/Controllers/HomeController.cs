@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using FileHubOrg.web.Models;
+using FileHubOrg.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FileHubOrg.web.Controllers
+namespace FileHubOrg.Web.Controllers
 {
     public class HomeController : Controller
     {

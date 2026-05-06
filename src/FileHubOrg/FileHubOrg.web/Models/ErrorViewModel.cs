@@ -1,4 +1,4 @@
-namespace FileHubOrg.web.Models
+namespace FileHubOrg.Web.Models
 {
     public class ErrorViewModel
     {
