@@ -28,11 +28,6 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\FileHubOrg.domain\FileHubOrg.Domain.csproj" />
 	</ItemGroup>
-
-
-	<ItemGroup>
-	  <Folder Include="Repositories\" />
-	</ItemGroup>
 	
 	
 </Project>
