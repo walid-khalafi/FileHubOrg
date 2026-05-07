@@ -18,12 +18,23 @@ namespace FileHubOrg.Infrastructure.Repositories
         public IApplicationUserRepository ApplicationUsers {get;}
 
         public IApplicationRoleRepository ApplicationRoles { get; }
+   
+        public IDepartmentRepository Departments { get; }
+        public IJWTRepository JWTs { get; }
+        public IFileMemberRepository FileMembers { get; }
+        public IFileMetaDataRepository FileMetaData { get; }
 
-        public UnitOfWork(FileHubOrgDbContext context,IApplicationUserRepository applicationUsers, IApplicationRoleRepository applicationRoles)
+
+        public UnitOfWork(FileHubOrgDbContext context,IApplicationUserRepository applicationUsers, IApplicationRoleRepository applicationRoles, IDepartmentRepository departments, IJWTRepository jWTs,IFileMemberRepository fileMembers,IFileMetaDataRepository fileMetaData)
         {
             _context = context;
             ApplicationUsers = applicationUsers;
             ApplicationRoles = applicationRoles;
+            Departments = departments;
+            JWTs = jWTs;
+            FileMembers = fileMembers;
+            FileMetaData = fileMetaData;
+           
         }
 
         public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
