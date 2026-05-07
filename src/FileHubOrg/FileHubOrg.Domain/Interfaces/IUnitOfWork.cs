@@ -27,14 +27,22 @@ namespace FileHubOrg.Domain.Interfaces
         /// <summary>
         /// Repository for application users (Identity).
         /// </summary>
-        IApplicationUserRepository ApplicationUsers { get; }
+        public IApplicationUserRepository ApplicationUsers { get; }
 
         /// <summary>
         /// Repository for application roles (Identity).
         /// </summary>
-        IApplicationRoleRepository ApplicationRoles { get; }
+        public IApplicationRoleRepository ApplicationRoles { get; }
 
+        /// <summary>
+        /// Repository for organization's department
+        /// </summary>
+        public IDepartmentRepository Departments { get; }
 
+        public IJWTRepository JWTs { get; }
+
+        public IFileMemberRepository FileMembers { get; }
+        public IFileMetaDataRepository FileMetaData { get; }
         // -----------------------------
         // Generic repository access
         // -----------------------------
