@@ -1,6 +1,7 @@
 ﻿using FileHubOrg.Domain.Entities.User;
 using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
+using FileHubOrg.Infrastructure.Persistence.Seeders;
 using FileHubOrg.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -101,6 +102,24 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+
+
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<FileHubOrgDbContext>();
+
+    var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    
+    DepartmentSeeder.SeedAsync(context).GetAwaiter().GetResult();
+    RoleSeeder.SeedAsync(roleManager).GetAwaiter().GetResult();
+
+    await UserSeeder.SeedAsync(userManager, roleManager, context);
+}
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
