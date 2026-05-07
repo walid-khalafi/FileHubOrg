@@ -101,3 +101,4 @@ namespace FileHubOrg.Domain.Interfaces
         Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
 
     }
+}
