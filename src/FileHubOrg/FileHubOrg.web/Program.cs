@@ -1,5 +1,7 @@
 ﻿using FileHubOrg.Domain.Entities.User;
+using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
+using FileHubOrg.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +61,40 @@ builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 
 // Web host environment for file uploads
 builder.Services.AddSingleton<IWebHostEnvironment>(builder.Environment);
+
+
+// ================================
+// Register Repositories (Infrastructure Layer)
+// ================================
+// Automatically scan Infrastructure assembly for classes ending with "Repository"
+// and register them as their implemented interfaces with Scoped lifetime.
+builder.Services.Scan(scan => scan
+    .FromAssemblies(typeof(FileHubOrgDbContext).Assembly)
+    .AddClasses(classes => classes.Where(type => type.Name.EndsWith("Repository")))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime()
+);
+
+
+// ================================
+// Register Services (Application Layer)
+// ================================
+// Automatically scan Application assembly for classes ending with "Service"
+// and register them as their implemented interfaces with Scoped lifetime.
+builder.Services.Scan(scan => scan
+    .FromAssemblies(typeof(FileHubOrg.Application.AssemblyMarker).Assembly)
+    .AddClasses(classes => classes.Where(type => type.Name.EndsWith("Service")))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime()
+);
+
+// ================================
+// Register Unit of Work
+// ================================
+// Register UnitOfWork implementation for IUnitOfWork interface.
+// This ensures all services can resolve IUnitOfWork via DI.
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 
 
 // Add services to the container.
