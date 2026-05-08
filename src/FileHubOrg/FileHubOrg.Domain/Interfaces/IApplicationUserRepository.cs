@@ -32,6 +32,14 @@ namespace FileHubOrg.Domain.Interfaces
         Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken ct = default);
 
         /// <summary>
+        /// Gets a users by their department id.
+        /// </summary>
+        /// <param name="departmentId">The department id.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The user or null if not found.</returns>
+        Task<List<ApplicationUser>?> GetByDepartmentAsync(Guid departmentId, CancellationToken ct = default);
+
+        /// <summary>
         /// Finds users matching the specified predicate.
         /// </summary>
         /// <param name="predicate">The predicate to filter users.</param>
