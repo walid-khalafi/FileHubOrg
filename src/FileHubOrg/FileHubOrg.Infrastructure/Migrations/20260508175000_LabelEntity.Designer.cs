@@ -4,6 +4,7 @@ using FileHubOrg.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FileHubOrg.Infrastructure.Migrations
 {
     [DbContext(typeof(FileHubOrgDbContext))]
-    partial class FileHubOrgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508175000_LabelEntity")]
+    partial class LabelEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,7 +110,7 @@ namespace FileHubOrg.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Labels");
+                    b.ToTable("Label");
                 });
 
             modelBuilder.Entity("FileHubOrg.Domain.Entities.Organization.Department", b =>

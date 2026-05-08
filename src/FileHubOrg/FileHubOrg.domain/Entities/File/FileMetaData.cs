@@ -11,5 +11,8 @@ namespace FileHubOrg.Domain.Entities.File
         public long Size { get; set; }
         public string? OrginalName { get; set; }
         public string? Description { get; set; }
+
+        public Guid? LabelId { get; set; }
+        public virtual Label Label { get; set; }
     }
 }

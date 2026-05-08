@@ -9,5 +9,6 @@ namespace FileHubOrg.Domain.Interfaces
 {
     public interface IFileMetaDataRepository : IGenericRepository<FileMetaData>
     {
+        Task<List<FileMetaData>> GetFilesByUserIdAsync(string userId);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using FileHubOrg.Domain.Entities.File;
 using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,8 @@ namespace FileHubOrg.Infrastructure.Repositories
         {
             _context = context;
         }
+
+        public async Task<List<FileMetaData>> GetFilesByUserIdAsync(string userId) => await _context.FileMetaData.Where(x => x.CreatedBy == userId).ToListAsync();
+       
     }
 }

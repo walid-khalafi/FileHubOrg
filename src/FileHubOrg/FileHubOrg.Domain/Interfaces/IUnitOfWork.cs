@@ -43,6 +43,7 @@ namespace FileHubOrg.Domain.Interfaces
 
         public IFileMemberRepository FileMembers { get; }
         public IFileMetaDataRepository FileMetaData { get; }
+        public ILabelRepository Labels { get; }
         // -----------------------------
         // Generic repository access
         // -----------------------------
