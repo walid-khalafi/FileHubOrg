@@ -44,6 +44,8 @@ namespace FileHubOrg.Application.Services
             return false;
         }
 
+        public async Task<Label> GetLabelByIdAsync(Guid id) => await _unitOfWork.Labels.GetFirstOrDefaultAsync(x => x.Id.Equals(id));
+
         public async Task<List<Label>> GetLabelsAsync(string userId) => await _unitOfWork.Labels.GetLabelsByUserIdAsync(userId);
 
         public async Task<bool> RemoveLabelAsync(string userId, string labelId)
