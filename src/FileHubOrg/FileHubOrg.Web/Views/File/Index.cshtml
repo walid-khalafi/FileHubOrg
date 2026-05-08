@@ -1,5 +1,390 @@
 ﻿@*
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
+@model FileHubOrg.Web.Models.FileViewModels.IndexViewModel
 @{
+
+    ViewData["Title"] = $"File Managment {Model.labelName}";
+    Layout = "_LayoutFile";
+}
+
+@functions {
+    public string GetFileIconClass(string fileName)
+    {
+        var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+        return ext switch
+        {
+            ".pdf" => "fa-file-pdf text-danger",
+            ".doc" or ".docx" => "fa-file-word text-primary",
+            ".xls" or ".xlsx" => "fa-file-excel text-success",
+            ".jpg" or ".jpeg" or ".png" or ".gif" => "fa-file-image text-warning",
+            ".zip" or ".rar" => "fa-file-archive text-muted",
+            ".txt" => "fa-file-alt text-dark",
+            _ => "fa-file text-secondary"
+        };
+    }
+}
+
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div class="btn-group">
+        <a href="javascript:;" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#createLabelModal">
+            <i class="fa fa-folder-plus me-1 fs-5"></i> New Label
+        </a>
+        <a href="javascript:;" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+            <i class="fa fa-upload me-1 fs-5"></i> Upload
+        </a>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary" onclick="openSearch()">
+            <i class="fa fa-search me-1"></i>
+        </button>
+        <button class="btn btn-outline-secondary" onclick="downloadCurrentFolderZip()">
+            <i class="fa fa-download me-1"></i>
+        </button>
+        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="fa fa-sort me-1"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#">Name A–Z</a></li>
+            <li><a class="dropdown-item" href="#">Newest First</a></li>
+            <li><a class="dropdown-item" href="#">Size</a></li>
+        </ul>
+    </div>
+</div>
+
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb bg-light px-3 py-2 rounded small">
+        <li class="breadcrumb-item">
+            <a href="@Url.Action("Index", "File", new { id = string.Empty })" class="text-decoration-none">
+                <i class="fa fa-folder-open me-1"></i> All Files
+            </a>
+        </li>
+        <li class="breadcrumb-item active">
+            <a href="@Url.Action("Index", "File", new {id = Model.labelId})" class="text-decoration-none"></a>
+            @Model.labelName
+        </li>
+    </ol>
+</nav>
+
+@if(Model.files.Count > 0)
+{
+    <div class="row">
+
+        @foreach (var file in Model.files)
+        {
+            <div class="col-12 col-sm-6 col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm rounded-3 h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="fs-4">
+                                <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" onclick="requestDownload('file.Id')"><i class="fa fa-download me-2"></i> Download</a></li>
+                                    <li><a class="dropdown-item" onclick="openRenameModal('file.Id', 'file.FileName', false)"><i class="fa fa-edit me-2"></i> Rename</a></li>
+                                    <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2"></i> Move</a></li>
+                                    <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2"></i> Copy</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item text-danger" onclick="deleteItem('file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <h6 class="text-truncate mb-1">
+                            <a href="#" class="text-decoration-none text-dark fw-semibold">@file.OrginalName</a>
+                        </h6>
+                        <div class="small text-muted">
+                            📦 @file.Size KB<br />
+                            📅 @file.CreatedAt<br />
+                            👤 @file.CreatedBy
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+      
+    </div>
+}
+else
+{
+    <div class="alert alert-light border text-muted text-center p-4 mt-4">
+        <i class="fa fa-folder-open me-2 fs-4 text-warning"></i> This label is empty.
+    </div>
+
+}
+
+
+
+
+
+<div class="modal fade" id="createLabelModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="CreateLabel" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title" id="createLabelModalLabel">Create New Label</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="parentId" value="" />
+                <input type="text" name="Name" class="form-control" placeholder="Label Name ..." required />
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="uploadFileModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="UploadFile" method="post" enctype="multipart/form-data" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createFolderModalLabel">Upload Files</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="file" name="file" class="form-control" required />
+                <input type="hidden" name="folderId" value="" />
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Upload</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 🔧 Modal for Rename -->
+<div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="renameForm" method="post" asp-controller="File" asp-action="Rename">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renameModalLabel">✏️ Rename</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="rename-id" name="Id" />
+                    <input type="hidden" id="rename-isFolder" name="IsFolder" />
+
+                    <div class="mb-3">
+                        <label for="rename-newName" class="form-label">New Name</label>
+                        <input type="text" class="form-control" id="rename-newName" name="NewName" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 🔁 Move Item Modal (Redesigned) -->
+<div class="modal fade" id="moveModal" tabindex="-1" aria-labelledby="moveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow-sm">
+            <form id="moveForm" method="post" asp-controller="File" asp-action="Move">
+                <div class="modal-header bg-light border-0 pb-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-folder-open text-warning fs-4"></i>
+                        <h5 class="modal-title fw-bold mb-0" id="moveModalLabel">
+                            Move <span id="move-itemName" class="text-primary"></span>
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body pt-2">
+                    <input type="hidden" id="move-id" name="ItemId" />
+                    <input type="hidden" id="move-isFolder" name="IsFolder" />
+                    <input type="hidden" id="move-targetParentId" name="TargetParentId" />
+
+                    <div class="mb-3">
+                        <label for="move-targetParentId" class="form-label fw-semibold">📁  Select Destinition</label>
+                        <div class="border rounded p-3 bg-light">
+                            <ul class="list-unstyled mb-0" id="folder-tree-list">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fas fa-arrow-right me-1"></i> Move
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 📋 Copy Item Modal (Redesigned) -->
+<div class="modal fade" id="copyModal" tabindex="-1" aria-labelledby="copyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow-sm">
+            <form id="copyForm" method="post" asp-controller="File" asp-action="Copy">
+                <div class="modal-header bg-light border-0 pb-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-copy text-success fs-4"></i>
+                        <h5 class="modal-title fw-bold mb-0" id="copyModalLabel">
+                            Copy <span id="copy-itemName" class="text-success"></span>
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body pt-2">
+                    <input type="hidden" id="copy-id" name="itemId" />
+                    <input type="hidden" id="copy-isFolder" name="isFolder" />
+                    <input type="hidden" id="copy-targetParentId" name="targetParentId" />
+
+                    <div class="mb-3">
+                        <label for="copy-targetParentId" class="form-label fw-semibold">📁 Select Destinition</label>
+                        <div class="border rounded p-3 bg-light">
+                            <ul class="list-unstyled mb-0" id="copy-folder-tree">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-copy me-1"></i> Copy
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section ScriptsChild {
+    <script>
+
+        function requestDownload(fileId) {
+            fetch("/File/GenerateDownloadToken", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(fileId)
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error("خطا در دریافت لینک دانلود");
+                    return response.json();
+                })
+                .then(data => {
+                    // لینک رو باز کن یا دانلود رو شروع کن
+                    const link = document.createElement("a");
+                    link.href = data.downloadUrl;
+                    link.style.display = "none";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                })
+                .catch(error => {
+                    console.error("خطا:", error);
+                    alert("امکان دریافت فایل وجود ندارد.");
+                });
+        }
+
+        function requestDownloadFolder(folderId) {
+            fetch("/File/GenerateDownloadFolderToken", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(folderId)
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error("خطا در دریافت لینک دانلود");
+                    return response.json();
+                })
+                .then(data => {
+                    // لینک رو باز کن یا دانلود رو شروع کن
+                    const link = document.createElement("a");
+                    link.href = data.downloadUrl;
+                    link.style.display = "none";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                })
+                .catch(error => {
+                    console.error("خطا:", error);
+                    alert("امکان دریافت فایل وجود ندارد.");
+                });
+        }
+
+        function openRenameModal(id, currentName, isFolder) {
+            document.getElementById("rename-id").value = id;
+            document.getElementById("rename-newName").value = currentName;
+            document.getElementById("rename-isFolder").value = isFolder;
+
+            var modal = new bootstrap.Modal(document.getElementById("renameModal"));
+            modal.show();
+        }
+
+        function openItemModal(data, type) {
+            const modalId = type === 'copy' ? 'copyModal' : 'moveModal';
+            const itemNameId = type === 'copy' ? 'copy-itemName' : 'move-itemName';
+            const targetParentId = type === 'copy' ? 'copy-targetParentId' : 'move-targetParentId';
+            const itemIdField = type === 'copy' ? 'copy-id' : 'move-id';
+            const isFolderField = type === 'copy' ? 'copy-isFolder' : 'move-isFolder';
+            const folderTreeListId = type === 'copy' ? 'copy-folder-tree' : 'folder-tree-list';
+
+            // 🔐 آیدی‌های ممنوعه برای انتخاب (دپارتمان، fff، و ...)
+            const forbiddenIds = [
+                "",  // آیدی واقعی پوشهٔ دپارتمان
+                ""
+                // می‌تونی مقادیر بیشتری اضافه کنی
+            ];
+
+            // مقداردهی فیلدهای مخفی مودال
+            document.getElementById(itemIdField).value = data.id;
+            document.getElementById(isFolderField).value = data.isFolder;
+            document.getElementById(targetParentId).value = ''; // ریست انتخاب مقصد
+
+            // نمایش نام آیتم در مودال
+            const nameSpan = document.getElementById(itemNameId);
+            nameSpan.innerText = data.name ?? '';
+
+            // 🛰️ ساخت URL و ارسال پارامترها
+            const url = new URL('/File/GetFolderTree', window.location.origin);
+            url.searchParams.set('excludeId', data.id);
+            url.searchParams.set('inputName', targetParentId);
+            url.searchParams.set('forbidden', forbiddenIds.join(','));
+
+            // نمایش لودینگ در درخت
+            const treeContainer = document.getElementById(folderTreeListId);
+            treeContainer.innerHTML = "<div class='text-muted fst-italic'>در حال بارگذاری پوشه‌ها...</div>";
+
+            // 🧭 دریافت و نمایش درخت مقصد
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Server error");
+                    return response.text();
+                })
+                .then(html => {
+                    treeContainer.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error("⛔️ خطا در دریافت درخت پوشه:", err);
+                    treeContainer.innerHTML = "<div class='text-danger'>خطا در بارگذاری پوشه‌ها</div>";
+                });
+
+            // نمایش مودال
+            const modal = new bootstrap.Modal(document.getElementById(modalId));
+            modal.show();
+        }
+
+    </script>
 }
