@@ -1,0 +1,63 @@
+﻿@using Microsoft.AspNetCore.Identity;
+@using FileHubOrg.Domain.Entities.User;
+@inject FileHubOrg.Application.Interfaces.ILabelService labelService;
+@inject FileHubOrg.Application.Interfaces.IDepartmentService departmentService;
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    Layout = "_Layout";
+    var user = await UserManager.GetUserAsync(User);
+    var userLabels = await labelService.GetLabelsAsync(user.Id);
+
+    var departments = await departmentService.GetDepartmentsAsync();
+}
+
+<div class="container py-4">
+    <div class="row">
+        <!-- 🔷 Sidebar -->
+        <div class="col-12 col-lg-3 mb-4">
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3 text-uppercase fw-bold">My Labels</h6>
+                    <div id="list-department" class="list-group list-group-flush">
+                        @foreach (var label in userLabels)
+                        {
+                            <a asp-controller="File" asp-action="Index" asp-route-id="@label.Id" class="list-group-item list-group-item-action py-2">
+                                <i class="fa fa-folder me-2 text-secondary"></i> @label.Name
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3 text-uppercase fw-bold">Departments</h6>
+                    <div id="list-department" class="list-group list-group-flush">
+                        @foreach (var department in departments)
+                        {
+                            <a asp-controller="Department" asp-action="Users" asp-route-id="@department.Id" class="list-group-item list-group-item-action py-2">
+                                <i class="fa fa-folder me-2 text-secondary"></i> @department.Name
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 🔶 Main content -->
+        <div class="col-12 col-lg-9">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    @RenderBody()
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("ScriptsChild", required: false)
+}
