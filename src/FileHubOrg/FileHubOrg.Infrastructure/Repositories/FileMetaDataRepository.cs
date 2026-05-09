@@ -18,7 +18,10 @@ namespace FileHubOrg.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<List<FileMetaData>> GetFilesByUserIdAsync(string userId) => await _context.FileMetaData.Where(x => x.CreatedBy == userId).ToListAsync();
+        public async Task<List<FileMetaData>> GetFilesByUserIdAsync(string userId) => await _context.FileMetaData
+            .Include(x=>x.Label)
+            .Where(x => x.CreatedBy == userId)
+            .ToListAsync();
        
     }
 }
