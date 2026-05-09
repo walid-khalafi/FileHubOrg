@@ -24,7 +24,7 @@
                         @foreach (var label in userLabels)
                         {
                             <a asp-controller="File" asp-action="Index" asp-route-id="@label.Id" class="list-group-item list-group-item-action py-2">
-                                <i class="fa fa-folder me-2 text-secondary"></i> @label.Name
+                                <i class="fa fa-tag me-2 text-danger"></i> @label.Name
                             </a>
                         }
                     </div>
@@ -38,7 +38,7 @@
                         @foreach (var department in departments)
                         {
                             <a asp-controller="Department" asp-action="Users" asp-route-id="@department.Id" class="list-group-item list-group-item-action py-2">
-                                <i class="fa fa-folder me-2 text-secondary"></i> @department.Name
+                                <i class="fa fa-folder me-2 text-primary"></i> @department.Name
                             </a>
                         }
                     </div>
