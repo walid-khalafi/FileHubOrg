@@ -1,6 +1,39 @@
 ﻿@*
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
+@model FileHubOrg.Web.Models.DepartmentViewModels.DepartmentUsersViewModel
 @{
+    Layout = "_LayoutFile";
     ViewData["Title"] = "Department's Users";
+    int index = 0;
 }
+
+
+<div class="container py-4">
+    <div class="row">
+        <h3>Users</h3>
+        <hr />
+        <table class="table table-responsive table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Full Name</th>
+                    <th>Phone Number</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users)
+                {
+                    index++;
+                    <tr>
+                        <td>@index</td>
+                        <td>@user.FullName</td>
+                        <td>@user.PhoneNumber</td>
+                        <td><a asp-controller="File" asp-action="UserSharedFiles" asp-route-id="@user.Id" class="btn btn-sm btn-primary"><i class="fa fa-arrow-alt-circle-right text-white"></i></a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
