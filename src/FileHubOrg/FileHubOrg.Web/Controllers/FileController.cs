@@ -74,5 +74,48 @@ namespace FileHubOrg.Web.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpGet]
+        public async Task<IActionResult> UserSharedFiles(string id)
+        {
+           
+
+            var user = await _userService.GetUserProfileAsync(id);
+            if (user == null) 
+            {
+                return NotFound("User Not Found");
+            }
+            var model = new UserSharedFiles()
+            {
+                files = new List<Domain.Entities.File.FileMetaData>(),
+                userId = id,
+                FullName = user.FullName,
+                DepartmentId = user.DepartmentId.Value,
+                DepartmentName = user.Department.Name
+
+            };
+
+            var files = await _fileService.GetFilesAsync(id);
+
+            foreach (var file in files)
+            {
+
+                if (!file.CreatedBy.Equals(GetUserId()))
+                {
+                    var members = await _fileService.GetFileMembersAsync(id, file.Id);
+                    var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(GetUserId()));
+                    if (!isCurrentUserIsMember)
+                    {
+                        files.Remove(file);
+                    }
+                }
+            }
+            if (files.Any())
+            {
+                model.files = files;
+            }
+            return View(model);
+
+        }
     }
 }
