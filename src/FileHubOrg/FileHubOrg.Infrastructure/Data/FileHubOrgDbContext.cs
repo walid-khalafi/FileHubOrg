@@ -21,6 +21,7 @@ namespace FileHubOrg.Infrastructure.Data
 
         public DbSet<Department> Departments { get; set; }
         public DbSet<FileMetaData> FileMetaData { get; set; }
+        public DbSet<Label> Labels { get; set; }
         public DbSet<JWT> JWTs { get; set; }
     }
 }

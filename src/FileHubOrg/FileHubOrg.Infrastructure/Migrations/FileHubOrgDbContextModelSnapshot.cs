@@ -42,6 +42,9 @@ namespace FileHubOrg.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("LabelId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("OrginalName")
                         .HasColumnType("nvarchar(max)");
 
@@ -63,7 +66,48 @@ namespace FileHubOrg.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("LabelId");
+
                     b.ToTable("FileMetaData");
+                });
+
+            modelBuilder.Entity("FileHubOrg.Domain.Entities.File.Label", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedByIP")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UpdatedByIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Labels");
                 });
 
             modelBuilder.Entity("FileHubOrg.Domain.Entities.Organization.Department", b =>
@@ -384,6 +428,15 @@ namespace FileHubOrg.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FileHubOrg.Domain.Entities.File.FileMetaData", b =>
+                {
+                    b.HasOne("FileHubOrg.Domain.Entities.File.Label", "Label")
+                        .WithMany("Files")
+                        .HasForeignKey("LabelId");
+
+                    b.Navigation("Label");
+                });
+
             modelBuilder.Entity("FileHubOrg.Domain.Entities.Token.JWT", b =>
                 {
                     b.HasOne("FileHubOrg.Domain.Entities.File.FileMetaData", "FileMetaData")
@@ -459,6 +512,11 @@ namespace FileHubOrg.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FileHubOrg.Domain.Entities.File.Label", b =>
+                {
+                    b.Navigation("Files");
                 });
 
             modelBuilder.Entity("FileHubOrg.Domain.Entities.Organization.Department", b =>

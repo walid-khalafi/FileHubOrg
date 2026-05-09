@@ -23,9 +23,9 @@ namespace FileHubOrg.Infrastructure.Repositories
         public IJWTRepository JWTs { get; }
         public IFileMemberRepository FileMembers { get; }
         public IFileMetaDataRepository FileMetaData { get; }
+        public ILabelRepository Labels { get; }
 
-
-        public UnitOfWork(FileHubOrgDbContext context,IApplicationUserRepository applicationUsers, IApplicationRoleRepository applicationRoles, IDepartmentRepository departments, IJWTRepository jWTs,IFileMemberRepository fileMembers,IFileMetaDataRepository fileMetaData)
+        public UnitOfWork(FileHubOrgDbContext context,IApplicationUserRepository applicationUsers, IApplicationRoleRepository applicationRoles, IDepartmentRepository departments, IJWTRepository jWTs,IFileMemberRepository fileMembers,IFileMetaDataRepository fileMetaData,ILabelRepository labels)
         {
             _context = context;
             ApplicationUsers = applicationUsers;
@@ -34,6 +34,7 @@ namespace FileHubOrg.Infrastructure.Repositories
             JWTs = jWTs;
             FileMembers = fileMembers;
             FileMetaData = fileMetaData;
+            Labels = labels;
            
         }
 

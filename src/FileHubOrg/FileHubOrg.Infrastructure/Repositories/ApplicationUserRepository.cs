@@ -33,6 +33,12 @@ namespace FileHubOrg.Infrastructure.Repositories
             return await Task.FromResult(users.AsReadOnly());
         }
 
+        public async Task<List<ApplicationUser>?> GetByDepartmentAsync(Guid departmentId, CancellationToken ct = default)
+        {
+            List<ApplicationUser> users = _userManager.Users.Where(x => x.DepartmentId == departmentId).ToList();
+            return users;
+        }
+
         public async Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
             return await _userManager.FindByEmailAsync(email);
