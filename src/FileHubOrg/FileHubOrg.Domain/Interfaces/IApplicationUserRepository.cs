@@ -71,5 +71,12 @@ namespace FileHubOrg.Domain.Interfaces
         /// <param name="ct">The cancellation token.</param>
         /// <returns>A read-only list of users in the specified role.</returns>
         Task<IReadOnlyList<ApplicationUser>> GetUsersInRoleAsync(string roleName, CancellationToken ct = default);
+       /// <summary>
+       /// Get user by user id
+       /// </summary>
+       /// <param name="userId"></param>
+       /// <param name="ct"></param>
+       /// <returns></returns>
+        Task<ApplicationUser> GetUserByIdAsync(string userId, CancellationToken ct = default);
     }
 }
