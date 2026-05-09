@@ -35,7 +35,7 @@ namespace FileHubOrg.Application.Services
                 throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
             }
 
-            return await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            return await _unitOfWork.ApplicationUsers.GetUserByIdAsync(userId, cancellationToken);
         }
 
         /// <inheritdoc />
