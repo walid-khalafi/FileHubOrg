@@ -39,6 +39,6 @@ namespace FileHubOrg.Domain.Entities.User
         public string FullName => $"{FirstName} {LastName}".Trim();
 
         public Guid? DepartmentId { get;  set; }
-        public virtual Department? Department { get; }
+        public virtual Department? Department { get; set; }
     }
 }
