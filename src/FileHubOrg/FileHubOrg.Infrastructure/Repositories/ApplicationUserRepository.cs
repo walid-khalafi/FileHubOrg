@@ -2,6 +2,7 @@
 using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,11 +14,13 @@ namespace FileHubOrg.Infrastructure.Repositories
 {
     public class ApplicationUserRepository : GenericRepository<ApplicationUser>, IApplicationUserRepository
     {
+        private readonly FileHubOrgDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
 
         public ApplicationUserRepository(FileHubOrgDbContext context, UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager) : base(context)
         {
+            _context = context;
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));
         }
@@ -47,6 +50,18 @@ namespace FileHubOrg.Infrastructure.Repositories
         public async Task<ApplicationUser?> GetByUserNameAsync(string userName, CancellationToken ct = default)
         {
             return await _userManager.FindByNameAsync(userName);
+        }
+
+        public async Task<ApplicationUser> GetUserByIdAsync(string userId, CancellationToken ct = default)
+        {
+            var user = await _context.Users.Include(d => d.Department).FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+
+                throw new Exception("User NotFound!");
+            }
+            return user;
+
         }
 
         public async Task<IReadOnlyList<ApplicationUser>> GetUsersInRoleAsync(string roleName, CancellationToken ct = default)
