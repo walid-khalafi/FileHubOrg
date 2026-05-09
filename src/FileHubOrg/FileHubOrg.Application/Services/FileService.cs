@@ -7,6 +7,7 @@ using FileHubOrg.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace FileHubOrg.Application.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWebHostEnvironment _env;
-     
+
 
 
         public FileService(IUnitOfWork unitOfWork, IOptions<FileStorageOptions> options, UserManager<ApplicationUser> userManager, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment env)
@@ -48,11 +49,28 @@ namespace FileHubOrg.Application.Services
             throw new NotImplementedException();
         }
 
+        public async Task<List<FileMember>> GetFileMembersAsync(string userId, Guid fileId)
+        {
+            var file = await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id == fileId && x.CreatedBy == userId);
+            if (file == null)
+            {
+                throw new Exception("File Not Found");
+            }
+
+            List<FileMember> members = await _unitOfWork.FileMembers
+                .AsQueryable(x => x.FileMetadataId == fileId)
+                .Include(x => x.AssignedTo)
+                .Include(f => f.FileMetaData)
+                .ToListAsync();
+
+            return members;
+        }
+
         public async Task<List<FileMetaData>> GetFilesAsync(string userId)
         {
 
             var files = await _unitOfWork.FileMetaData.GetFilesByUserIdAsync(userId);
-            if (files !=null)
+            if (files != null)
             {
                 return files;
             }
