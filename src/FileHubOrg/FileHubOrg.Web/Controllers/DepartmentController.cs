@@ -17,13 +17,28 @@ namespace FileHubOrg.Web.Controllers
             var model = new IndexViewModel() { Departments = new List<Domain.Entities.Organization.Department>() };
             IReadOnlyList<Domain.Entities.Organization.Department> departments = await _departmentService.GetDepartmentsAsync();
 
-            model.Departments = departments.ToList();
+            if (departments !=null)
+            {
+                model.Departments = departments.ToList();
+            }
+          
             return View(model);
         }
 
-        public IActionResult Users()
+        public async Task<IActionResult> Users(Guid id)
         {
-            return View();
+            var model = new DepartmentUsersViewModel() { Users = new List<Domain.Entities.User.ApplicationUser>() };
+            if (id == Guid.Empty)
+            {
+                return BadRequest();
+            }
+
+            var users = await _departmentService.GetDepartmentUsersAsync(id);
+            if (users !=null)
+            {
+                model.Users = users;
+            }
+            return View(model);
         }
     }
 }
