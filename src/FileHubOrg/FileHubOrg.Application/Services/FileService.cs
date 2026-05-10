@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -77,9 +78,39 @@ namespace FileHubOrg.Application.Services
             return new List<FileMetaData>();
         }
 
-        public Task<FileMetaData> UploadFileAsync(FileMetaData file, Stream stream)
+        public string GetRootPath()
         {
-            throw new NotImplementedException();
+            return _options.StorageMode == "Network"
+                ? _options.Network.PhysicalPath
+                : _options.Local.PhysicalPath;
+        }
+
+        public async Task<FileMetaData> UploadFileAsync(FileMetaData file, Stream stream)
+        {
+            var maxSizeBytes = _options.MaxFileSizeMB * 1024 * 1024;
+
+            if (file.Size > maxSizeBytes)
+                throw new InvalidOperationException("حجم فایل از حد مجاز بیشتر است.");
+
+
+            var ext = Path.GetExtension(file.OrginalName).ToLowerInvariant();
+            if (!_options.AllowedExtensions.Contains(ext))
+                throw new InvalidOperationException("نوع فایل مجاز نیست.");
+
+            var uploaderFolder = Path.Combine(GetRootPath(), file.CreatedBy);
+
+            Directory.CreateDirectory(uploaderFolder);
+
+            var fileName = Path.GetFileName(file.OrginalName);
+            var fullPath = Path.Combine(uploaderFolder, fileName);
+
+            using var fs = new FileStream(fullPath, FileMode.Create);
+            await stream.CopyToAsync(fs);
+
+            await _unitOfWork.FileMetaData.AddAsync(file);
+            await _unitOfWork.SaveChangesAsync();
+
+            return file;
         }
     }
 }
