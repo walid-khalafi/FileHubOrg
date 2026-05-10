@@ -57,26 +57,14 @@
                     {
                         <tr>
 
-                            <td><i class="@GetFileIconClass(file.OrginalName)"></i></td>
+                            <td><i class="fa @GetFileIconClass(file.OrginalName)"></i></td>
                             <td>@file.OrginalName</td>
                             <td>@file.Description</td>
                             <td>@file.Label.Name</td>
                             <td>@file.Size</td>
                             <td>@file.CreatedAt</td>
                             <td>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" onclick="requestDownload('file.Id')"><i class="fa fa-download me-2"></i> Download</a></li>
-                                        <li><a class="dropdown-item" onclick="openRenameModal('file.Id', 'file.FileName', false)"><i class="fa fa-edit me-2"></i> Rename</a></li>
-                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2"></i> Move</a></li>
-                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2"></i> Copy</a></li>
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item text-danger" onclick="deleteItem('file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
-                                    </ul>
-                                </div>
+                                <a class="btn btn-sm" onclick="requestDownload('file.Id')"><i class="fa fa-download me-2"></i> </a>
                             </td>
                         </tr>
                     }
