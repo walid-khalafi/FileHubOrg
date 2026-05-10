@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FileHubOrg.Domain.Entities.File
 {
-    public class FileMetaData:BaseEntity
+    public class FileMetaData : BaseEntity
     {
         public long Size { get; set; }
         public string? OrginalName { get; set; }
@@ -14,5 +14,22 @@ namespace FileHubOrg.Domain.Entities.File
 
         public Guid? LabelId { get; set; }
         public virtual Label Label { get; set; }
+
+        public string StoredPath
+        {
+            get
+            {
+                return $"{CreatedBy}/{OrginalName}";
+            }
+        }
+
+        public string FileUrl
+        {
+            get
+            {
+
+                return $"/{StoredPath.Replace("\\", "/")}";
+            }
+        }
     }
 }
