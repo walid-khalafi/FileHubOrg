@@ -1,4 +1,5 @@
-﻿using FileHubOrg.Domain.Entities.User;
+﻿using FileHubOrg.Application.Configurations;
+using FileHubOrg.Domain.Entities.User;
 using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
 using FileHubOrg.Infrastructure.Persistence.Seeders;
@@ -55,7 +56,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddDistributedMemoryCache();
-
+builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
 // HttpContextAccessor for accessing HTTP context in services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
