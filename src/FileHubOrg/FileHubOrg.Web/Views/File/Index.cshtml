@@ -145,13 +145,14 @@ else
 <div class="modal fade" id="uploadFileModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form asp-action="UploadFile" method="post" enctype="multipart/form-data" class="modal-content">
+            @Html.AntiForgeryToken()
             <div class="modal-header">
                 <h5 class="modal-title" id="createFolderModalLabel">Upload Files</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <input type="file" name="file" class="form-control" required />
-                <input type="hidden" name="folderId" value="" />
+                <input type="hidden" name="labelId" value="@Model.labelId" />
             </div>
             <div class="modal-footer">
                 <button type="submit" class="btn btn-primary">Upload</button>
