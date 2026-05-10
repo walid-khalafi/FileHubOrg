@@ -1,4 +1,5 @@
 ﻿using FileHubOrg.Application.Interfaces;
+using FileHubOrg.Domain.Entities.File;
 using FileHubOrg.Web.Models.FileViewModels;
 using FileHubOrg.Web.Models.LabelViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -78,10 +79,10 @@ namespace FileHubOrg.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> UserSharedFiles(string id)
         {
-           
+
 
             var user = await _userService.GetUserProfileAsync(id);
-            if (user == null) 
+            if (user == null)
             {
                 return NotFound("User Not Found");
             }
@@ -117,5 +118,49 @@ namespace FileHubOrg.Web.Controllers
             return View(model);
 
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadFile(IFormFile file, Guid? labelId)
+        {
+            var userId = GetUserId();
+
+
+            if (file == null || file.Length == 0)
+            {
+                TempData["Error"] = "فایلی انتخاب نشده است.";
+                return RedirectToAction("Index");
+            }
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            var fileRecord = new FileMetaData
+            {
+                OrginalName = file.FileName,
+                Size = file.Length,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIP = "",
+                LabelId = labelId
+            };
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                await _fileService.UploadFileAsync(fileRecord, stream);
+                TempData["Success"] = "فایل با موفقیت آپلود شد.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            catch
+            {
+                TempData["Error"] = "خطایی در آپلود فایل رخ داد.";
+            }
+
+            return RedirectToAction("Index", "File", new { id = labelId });
+        }
+
     }
 }
