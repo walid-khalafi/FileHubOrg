@@ -47,7 +47,7 @@
                         <th>File Name</th>
                         <th>Description</th>
                         <th>Label</th>
-                        <th>File Size MB</th>
+                        <th>Size</th>
                         <th>Created At</th>
                         <th>Action</th>
                     </tr>
@@ -61,10 +61,10 @@
                             <td>@file.OrginalName</td>
                             <td>@file.Description</td>
                             <td>@file.Label.Name</td>
-                            <td>@file.SizeMB</td>
+                            <td>@file.SizeKB KB</td>
                             <td>@file.CreatedAt</td>
                             <td>
-                                <a class="btn btn-sm" onclick="requestDownload('file.Id')"><i class="fa fa-download me-2"></i> </a>
+                                <a class="btn btn-sm" onclick="JavaScript:requestDownload('@file.Id')"><i class="fa fa-download me-2"></i> </a>
                             </td>
                         </tr>
                     }
