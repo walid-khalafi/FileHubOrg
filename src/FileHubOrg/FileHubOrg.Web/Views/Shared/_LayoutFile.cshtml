@@ -59,5 +59,34 @@
 </div>
 
 @section Scripts {
+    <script type="text/javascript">
+                function requestDownload(fileId) {
+            fetch("/File/GenerateDownloadToken", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(fileId)
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error("خطا در دریافت لینک دانلود");
+                    return response.json();
+                })
+                .then(data => {
+                    // لینک رو باز کن یا دانلود رو شروع کن
+                    const link = document.createElement("a");
+                    link.href = data.downloadUrl;
+                    link.style.display = "none";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                })
+                .catch(error => {
+                    console.error("خطا:", error);
+                    alert("امکان دریافت فایل وجود ندارد.");
+                });
+        }
+
+    </script>
     @await RenderSectionAsync("ScriptsChild", required: false)
 }
