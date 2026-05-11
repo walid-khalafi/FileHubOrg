@@ -39,7 +39,6 @@ namespace FileHubOrg.Application.Services
         }
 
 
-
         public Task<bool> DeleteFileAsync(Guid fileId, string userId)
         {
             throw new NotImplementedException();
@@ -49,6 +48,8 @@ namespace FileHubOrg.Application.Services
         {
             throw new NotImplementedException();
         }
+
+        public async Task<FileMetaData> GetFileAsync(Guid fileId) => await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x=>x.Id.Equals(fileId));
 
         public async Task<List<FileMember>> GetFileMembersAsync(string userId, Guid fileId)
         {
@@ -107,6 +108,9 @@ namespace FileHubOrg.Application.Services
             using var fs = new FileStream(fullPath, FileMode.Create);
             await stream.CopyToAsync(fs);
 
+            string ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+
+            file.CreatedByIP = ipAddress;
             await _unitOfWork.FileMetaData.AddAsync(file);
             await _unitOfWork.SaveChangesAsync();
 

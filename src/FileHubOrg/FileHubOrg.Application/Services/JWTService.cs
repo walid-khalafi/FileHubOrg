@@ -2,6 +2,7 @@
 using FileHubOrg.Domain.Entities.Token;
 using FileHubOrg.Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -54,6 +55,7 @@ namespace FileHubOrg.Application.Services
                 Id = Guid.NewGuid(),
                 CreatedAt = now,
                 CreatedBy = userId,
+                RequestedByUserId = userId,
                 FileMetadataId = fileId,
                 CreatedByIP = ipAddress,
                 IsUsed = false,
@@ -97,6 +99,33 @@ namespace FileHubOrg.Application.Services
             {
                 return null;
             }
+        }
+
+
+        public async Task<JWT> GetDownloadTokenAsync(string jwt)
+        {
+            return await _unitOfWork.JWTs
+                .GetFirstOrDefaultAsync(t => t.Jwt == jwt);
+        }
+
+        public async Task<bool> UpdateDownloadToken(JWT token)
+        {
+            var data = await _unitOfWork.JWTs.GetByIdAsync(token.Id);
+            if (data == null)
+            {
+                return false;
+            }
+            data = token;
+            try
+            {
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return false;
         }
     }
 }

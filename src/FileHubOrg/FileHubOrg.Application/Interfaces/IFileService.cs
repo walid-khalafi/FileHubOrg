@@ -10,10 +10,12 @@ namespace FileHubOrg.Application.Interfaces
     public interface IFileService
     {
         Task<List<FileMetaData>> GetFilesAsync(string userId);
+        Task<FileMetaData> GetFileAsync(Guid fileId);
         Task<List<FileMember>> GetFileMembersAsync(string userId, Guid fileId);
         Task<bool> DeleteFileAsync(Guid fileId, string userId);
         Task<FileMetaData> UploadFileAsync(FileMetaData file, Stream stream);
         Task<string> GenerateDownloadTokenAsync(Guid fileId, string userId);
 
+        string GetRootPath();
     }
 }

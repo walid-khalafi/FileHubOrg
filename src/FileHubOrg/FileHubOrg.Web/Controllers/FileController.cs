@@ -162,5 +162,85 @@ namespace FileHubOrg.Web.Controllers
             return RedirectToAction("Index", "File", new { id = labelId });
         }
 
+
+        [HttpPost]
+        public async Task<IActionResult> GenerateDownloadToken([FromBody] Guid fileId)
+        {
+            var userId = GetUserId();
+
+            var file = await _fileService.GetFileAsync(fileId);
+            if (file ==null)
+            {
+                return NotFound("File NotFound!");
+            }
+
+            if (!file.CreatedBy.Equals(userId))
+            {
+                var members = await _fileService.GetFileMembersAsync(userId, fileId);
+                var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(GetUserId()));
+                if (!isCurrentUserIsMember)
+                {
+                    return Forbid();
+                }
+            }
+           
+
+            var jwt = await _jwtService.GenerateDownloadJwtAsync(fileId, userId);
+
+            var downloadUrl = Url.Action("DownloadViaJwt", "File", new { token = jwt }, Request.Scheme);
+
+            return Ok(new { downloadUrl });
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> DownloadViaJwt(string token)
+        {
+            var principal = _jwtService.ValidateDownloadToken(token);
+            if (principal == null)
+                return Unauthorized();
+
+            var fileId = Guid.Parse(principal.FindFirst("fileId")?.Value);
+
+            var userId = principal.FindFirst("userId")?.Value;
+
+            if (fileId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
+                return BadRequest();
+
+
+            var file = await _fileService.GetFileAsync(fileId);
+
+           
+
+            if (file == null || !System.IO.File.Exists(Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName)))
+                return NotFound();
+
+            if (!file.CreatedBy.Equals(userId))
+            {
+                var members = await _fileService.GetFileMembersAsync(userId, fileId);
+                var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(GetUserId()));
+                if (!isCurrentUserIsMember)
+                {
+                    return Forbid();
+                }
+            }
+
+
+            var dbToken = await _jwtService.GetDownloadTokenAsync(token);
+            if (dbToken == null)
+            {
+                return NotFound();
+            }
+
+            dbToken.IsUsed = true;
+            dbToken.UsedAt = DateTime.UtcNow;
+            await _jwtService.UpdateDownloadToken(dbToken);
+            var filePath = Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName);
+
+            var contentType = "application/octet-stream";
+            return PhysicalFile(filePath, contentType, file.OrginalName);
+
+        }
+
     }
 }

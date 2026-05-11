@@ -9,6 +9,23 @@ namespace FileHubOrg.Domain.Entities.File
     public class FileMetaData : BaseEntity
     {
         public long Size { get; set; }
+       
+        public long SizeKB
+        {
+            get
+            {
+                return Size / 1024;
+            }
+
+        }
+        public long SizeMB
+        {
+            get
+            {
+                return SizeKB / 1024;
+            }
+        }
+
         public string? OrginalName { get; set; }
         public string? Description { get; set; }
 

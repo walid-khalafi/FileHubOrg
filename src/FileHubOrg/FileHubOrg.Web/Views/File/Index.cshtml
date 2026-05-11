@@ -71,42 +71,51 @@
 @if(Model.files.Count > 0)
 {
     <div class="row">
+        <div class="table-responsive">
+            <table id="tblMyFiles" class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>FileName</th>
+                        <th>Description</th>
+                        <th>Size</th>
+                        <th>CreatedAt</th>
+                        <th>Members</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var file in Model.files)
+                    {
+                        <tr>
+                            <td> <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i></td>
+                            <td>@file.OrginalName</td>
+                            <td>@file.Description</td>
+                            <td>@file.SizeKB KB</td>
+                            <td>@file.CreatedAt</td>
+                            <td></td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fa fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" onclick="requestDownload('@file.Id')"><i class="fa fa-download me-2"></i> Download</a></li>
+                                        <li><a class="dropdown-item" onclick="openRenameModal('file.Id', 'file.FileName', false)"><i class="fa fa-edit me-2"></i> Rename</a></li>
+                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2"></i> Move</a></li>
+                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2"></i> Copy</a></li>
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item text-danger" onclick="deleteItem('file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
 
-        @foreach (var file in Model.files)
-        {
-            <div class="col-12 col-sm-6 col-lg-4 mb-4">
-                <div class="card border-0 shadow-sm rounded-3 h-100">
-                    <div class="card-body d-flex flex-column justify-content-between">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="fs-4">
-                                <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i>
-                            </div>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="fa fa-ellipsis-v"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" onclick="requestDownload('file.Id')"><i class="fa fa-download me-2"></i> Download</a></li>
-                                    <li><a class="dropdown-item" onclick="openRenameModal('file.Id', 'file.FileName', false)"><i class="fa fa-edit me-2"></i> Rename</a></li>
-                                    <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2"></i> Move</a></li>
-                                    <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2"></i> Copy</a></li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li><a class="dropdown-item text-danger" onclick="deleteItem('file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <h6 class="text-truncate mb-1">
-                            <a href="#" class="text-decoration-none text-dark fw-semibold">@file.OrginalName</a>
-                        </h6>
-                        <div class="small text-muted">
-                            📦 @file.Size KB<br />
-                            📅 @file.CreatedAt<br />
-                            👤 @file.CreatedBy
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+                </tbody>
+            </table>
+
+        </div>
       
     </div>
 }
@@ -298,33 +307,7 @@ else
                 });
         }
 
-        function requestDownloadFolder(folderId) {
-            fetch("/File/GenerateDownloadFolderToken", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(folderId)
-            })
-                .then(response => {
-                    if (!response.ok) throw new Error("خطا در دریافت لینک دانلود");
-                    return response.json();
-                })
-                .then(data => {
-                    // لینک رو باز کن یا دانلود رو شروع کن
-                    const link = document.createElement("a");
-                    link.href = data.downloadUrl;
-                    link.style.display = "none";
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                })
-                .catch(error => {
-                    console.error("خطا:", error);
-                    alert("امکان دریافت فایل وجود ندارد.");
-                });
-        }
-
+    
         function openRenameModal(id, currentName, isFolder) {
             document.getElementById("rename-id").value = id;
             document.getElementById("rename-newName").value = currentName;

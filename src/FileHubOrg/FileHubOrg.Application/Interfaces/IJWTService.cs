@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FileHubOrg.Domain.Entities.Token;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -22,5 +23,7 @@ namespace FileHubOrg.Application.Interfaces
         /// <param name="token"></param>
         /// <returns></returns>
         ClaimsPrincipal? ValidateDownloadToken(string token);
+        Task<JWT> GetDownloadTokenAsync(string jwt);
+        Task<bool> UpdateDownloadToken(JWT token);
     }
 }
