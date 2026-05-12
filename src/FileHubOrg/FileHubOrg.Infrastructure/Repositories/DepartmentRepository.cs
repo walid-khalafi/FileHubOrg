@@ -1,6 +1,7 @@
 ﻿using FileHubOrg.Domain.Entities.Organization;
 using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,12 @@ namespace FileHubOrg.Infrastructure.Repositories
         public DepartmentRepository(FileHubOrgDbContext context) : base(context)
         {
             _context = context;
+        }
+
+        public async Task<List<Department>> GetAllAsync()
+        {
+            var departments = await _context.Departments.Include(x=>x.Members).ToListAsync();
+            return departments;
         }
     }
 }
