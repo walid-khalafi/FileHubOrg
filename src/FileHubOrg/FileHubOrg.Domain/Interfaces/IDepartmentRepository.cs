@@ -10,5 +10,6 @@ namespace FileHubOrg.Domain.Interfaces
 {
     public interface IDepartmentRepository : IGenericRepository<Department>
     {
+        Task<List<Department>> GetAllAsync();
     }
 }
