@@ -1,0 +1,19 @@
+﻿@model FileHubOrg.Web.Models.FileViewModels.ShareListViewModel
+
+@* Hidden data container — the new share modal JS reads these attributes to build its UI *@
+<div id="shareDataRoot" style="display:none;">
+    @foreach (var department in Model.Departments)
+    {
+        <div class="share-dept-data"
+             data-dept-id="@department.Id"
+             data-dept-name="@department.Name">
+            @foreach (var user in department.Members)
+            {
+                <span class="share-user-data"
+                      data-user-id="@user.Id"
+                      data-user-name="@user.FullName"
+                      data-dept-id="@department.Id"></span>
+            }
+        </div>
+    }
+</div>

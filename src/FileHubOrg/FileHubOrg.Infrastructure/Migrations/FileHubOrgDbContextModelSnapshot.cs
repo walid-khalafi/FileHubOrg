@@ -22,6 +22,52 @@ namespace FileHubOrg.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FileHubOrg.Domain.Entities.File.FileMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AssignedToId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedByIP")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("FileMetadataId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UpdatedByIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedToId");
+
+                    b.HasIndex("FileMetadataId");
+
+                    b.ToTable("FileMembers");
+                });
+
             modelBuilder.Entity("FileHubOrg.Domain.Entities.File.FileMetaData", b =>
                 {
                     b.Property<Guid>("Id")
@@ -428,6 +474,25 @@ namespace FileHubOrg.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FileHubOrg.Domain.Entities.File.FileMember", b =>
+                {
+                    b.HasOne("FileHubOrg.Domain.Entities.User.ApplicationUser", "AssignedTo")
+                        .WithMany()
+                        .HasForeignKey("AssignedToId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FileHubOrg.Domain.Entities.File.FileMetaData", "FileMetaData")
+                        .WithMany()
+                        .HasForeignKey("FileMetadataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AssignedTo");
+
+                    b.Navigation("FileMetaData");
+                });
+
             modelBuilder.Entity("FileHubOrg.Domain.Entities.File.FileMetaData", b =>
                 {
                     b.HasOne("FileHubOrg.Domain.Entities.File.Label", "Label")
@@ -458,9 +523,11 @@ namespace FileHubOrg.Infrastructure.Migrations
 
             modelBuilder.Entity("FileHubOrg.Domain.Entities.User.ApplicationUser", b =>
                 {
-                    b.HasOne("FileHubOrg.Domain.Entities.Organization.Department", null)
+                    b.HasOne("FileHubOrg.Domain.Entities.Organization.Department", "Department")
                         .WithMany("Members")
                         .HasForeignKey("DepartmentId");
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

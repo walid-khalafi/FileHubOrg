@@ -304,6 +304,28 @@ namespace FileHubOrg.Web.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> DeleteFile([FromBody] Guid fileId)
+        {
+            if (fileId == Guid.Empty)
+                return BadRequest("Invalid file ID.");
+
+            var userId = GetUserId();
+            var file = await _fileService.GetFileAsync(fileId);
+
+            if (file == null)
+                return NotFound();
+
+            if (!file.CreatedBy.Equals(userId))
+                return Forbid();
+
+            var success = await _fileService.DeleteFileAsync(fileId, userId);
+            if (!success)
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to delete file." });
+
+            return Ok(new { message = "File deleted." });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> ShareFile([FromBody] ShareFileRequestModel request)
         {
             // 1. --- Input Validation ---

@@ -1,9 +1,4 @@
-﻿@*
-    _Layout.cshtml: This is the main layout file for the entire web application.
-    It defines the overall structure, including the header, footer, and navigation.
-    It also renders the content of individual pages using @RenderBody().
-*@
-@using Microsoft.AspNetCore.Identity
+﻿@using Microsoft.AspNetCore.Identity
 @using FileHubOrg.Domain.Entities.User
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -13,112 +8,270 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - FileHubOrg.web</title>
+    <title>@ViewData["Title"] - FileHubOrg</title>
 
-    @* Bootstrap CSS framework for styling *@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    @* Custom site styles *@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    @* Project-specific styles *@
     <link rel="stylesheet" href="~/FileHubOrg.web.styles.css" asp-append-version="true" />
-    @* Font Awesome for icons *@
     <link rel="stylesheet" href="~/lib/fontawesome-free-6.7.2-web/css/all.min.css" />
 
-    @* Allows individual pages to inject their own styles *@
+    <style>
+        /* ── Base ── */
+        :root {
+            --brand-primary: #4f46e5;
+            --brand-primary-dark: #3730a3;
+            --sidebar-width: 260px;
+            --navbar-height: 60px;
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            background-color: #f5f6fa;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Navbar ── */
+        .app-navbar {
+            height: var(--navbar-height);
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .navbar-brand-text {
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: var(--brand-primary) !important;
+            letter-spacing: -.3px;
+        }
+
+        .navbar-brand-text .brand-icon {
+            width: 30px; height: 30px;
+            background: var(--brand-primary);
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: .85rem;
+            margin-right: 8px;
+        }
+
+        /* Nav links */
+        .app-navbar .nav-link {
+            color: #6b7280 !important;
+            font-size: .9rem;
+            font-weight: 500;
+            padding: .4rem .75rem !important;
+            border-radius: 6px;
+            transition: background .15s, color .15s;
+        }
+
+        .app-navbar .nav-link:hover {
+            background: #f3f4f6;
+            color: #111827 !important;
+        }
+
+        .app-navbar .nav-link.active-nav {
+            background: #ede9fe;
+            color: var(--brand-primary) !important;
+        }
+
+        /* User avatar */
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: var(--brand-primary);
+            color: #fff;
+            font-size: .8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Dropdown */
+        .user-dropdown .dropdown-menu {
+            min-width: 200px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 8px 24px rgba(0,0,0,.1);
+            border-radius: 10px;
+            padding: .5rem;
+        }
+
+        .user-dropdown .dropdown-item {
+            border-radius: 6px;
+            font-size: .875rem;
+            padding: .45rem .75rem;
+        }
+
+        .user-dropdown .dropdown-item:hover { background: #f3f4f6; }
+
+        .user-dropdown .dropdown-divider { margin: .35rem 0; }
+
+        /* ── Page wrapper ── */
+        .page-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-content {
+            flex: 1;
+            padding: 1.5rem 0;
+        }
+
+        /* ── Footer ── */
+        .app-footer {
+            background: #fff;
+            border-top: 1px solid #e9ecef;
+            padding: .85rem 0;
+            font-size: .8rem;
+            color: #9ca3af;
+        }
+
+        .app-footer a { color: #9ca3af; text-decoration: none; }
+        .app-footer a:hover { color: var(--brand-primary); }
+    </style>
+
     @RenderSection("Styles", required: false)
 </head>
 <body>
-    <header>
-        @* Navigation Bar *@
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                @* Brand Logo/Name *@
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">FileHubOrg.web</a>
 
-                @* Toggler for mobile view *@
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action     = ViewContext.RouteData.Values["action"]?.ToString();
 
-                @* Collapsible navigation menu *@
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    @* Main Navigation Links *@
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="File" asp-action="Index">Files</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Department" asp-action="Index">Departments</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+    string NavClass(string c, string a = "Index") =>
+        (controller?.Equals(c, StringComparison.OrdinalIgnoreCase) == true &&
+         action?.Equals(a, StringComparison.OrdinalIgnoreCase) == true)
+        ? "nav-link active-nav" : "nav-link";
+}
 
-                    @* Right-aligned Navigation (User account, Login/Logout) *@
-                    <ul class="navbar-nav ms-auto">
-                        @if (SignInManager.IsSignedIn(User))
-                        {
-                            // Get current logged-in user
-                            var currentUser = await UserManager.GetUserAsync(User);
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    @* User Icon *@
-                                    <i class="fa fa-user-circle me-1 fs-5"></i>
-                                    <span class="fw-medium">@currentUser.FullName</span>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end mt-2">
-                                    <li>
-                                        @* Logout Form Button *@
-                                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                            <button type="submit" class="dropdown-item">
-                                                <i class="fa fa-sign-out text-danger me-2"></i> Logout
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
+@* ── Navbar ── *@
+<nav class="navbar app-navbar px-3">
+    <div class="container-fluid gap-3">
+
+        @* Brand *@
+        <a class="navbar-brand navbar-brand-text d-flex align-items-center me-4 text-decoration-none" 
+           asp-controller="Home" asp-action="Index">
+            <span class="brand-icon"><i class="fa fa-layer-group"></i></span>
+            FileHubOrg
+        </a>
+
+        @* Mobile toggler *@
+        <button class="navbar-toggler border-0 d-lg-none ms-auto me-2" type="button"
+                data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        @* Nav links *@
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav me-auto gap-1">
+                <li class="nav-item">
+                    <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index">
+                        <i class="fa fa-home me-1"></i> Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="@NavClass("File")" asp-controller="File" asp-action="Index">
+                        <i class="fa fa-folder-open me-1"></i> Files
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="@NavClass("Department")" asp-controller="Department" asp-action="Index">
+                        <i class="fa fa-sitemap me-1"></i> Departments
+                    </a>
+                </li>
+            </ul>
+
+            @* Right side *@
+            <ul class="navbar-nav ms-auto align-items-center gap-2">
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    var currentUser = await UserManager.GetUserAsync(User);
+                    var initials = string.Concat(
+                        (currentUser?.FullName ?? "U")
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Take(2)
+                            .Select(w => w[0].ToString().ToUpper())
+                    );
+
+                    <li class="nav-item dropdown user-dropdown">
+                        <a class="nav-link d-flex align-items-center gap-2 pe-0" href="#"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="user-avatar">@initials</span>
+                            <span class="d-none d-md-inline fw-medium text-dark small">@currentUser?.FullName</span>
+                            <i class="fa fa-chevron-down text-muted" style="font-size:.65rem;"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end mt-2">
+                            <li class="px-3 py-2">
+                                <div class="fw-semibold text-dark small">@currentUser?.FullName</div>
+                                <div class="text-muted" style="font-size:.75rem;">@currentUser?.Email</div>
                             </li>
-                        }
-                        else
-                        {
-                            @* Login Link if user is not signed in *@
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Login">
-                                    <i class="fa fa-sign-in me-1"></i> Login
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="File" asp-action="Index">
+                                    <i class="fa fa-folder me-2 text-muted"></i> My Files
                                 </a>
                             </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fa fa-sign-out-alt me-2"></i> Sign Out
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="btn btn-sm btn-primary rounded-pill px-3"
+                           asp-controller="Account" asp-action="Login">
+                            <i class="fa fa-sign-in-alt me-1"></i> Sign In
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</nav>
 
-    @* Main content area of the page *@
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+@* ── Page content ── *@
+<div class="page-wrapper">
+    <div class="page-content">
+        <div class="container">
+            <main role="main">
+                @RenderBody()
+            </main>
+        </div>
     </div>
 
-    @* Footer Section *@
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2024 - FileHubOrg.web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    @* ── Footer ── *@
+    <footer class="app-footer">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center">
+            <span>&copy; @DateTime.Now.Year FileHubOrg &mdash; Secure File Management</span>
+            <a asp-controller="Home" asp-action="Privacy">Privacy Policy</a>
         </div>
     </footer>
+</div>
 
-    @* Bootstrap and jQuery scripts *@
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @* Custom site JavaScript *@
-    <script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
 
-    @* Allows individual pages to inject their own scripts *@
-    @await RenderSectionAsync("Scripts", required: false)
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

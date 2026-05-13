@@ -1,198 +1,453 @@
-﻿@*
-    Index.cshtml: This view displays the list of files for a specific label or the main file directory.
-    It inherits from _LayoutFile.cshtml, which provides the sidebar and main content structure.
-    This section includes layout settings, page-specific styles, and helper functions.
-*@
-@model FileHubOrg.Web.Models.FileViewModels.IndexViewModel
+﻿@model FileHubOrg.Web.Models.FileViewModels.IndexViewModel
 @{
-
-    // Set the layout to _LayoutFile.cshtml to use its structure (sidebar + main content area).
     Layout = "_LayoutFile";
-
-    // Set the page title dynamically. Accessing Model properties like 'labelName' is assumed.
-    // If Model.labelName is null, default to "All Files".
     ViewData["Title"] = $"File Management - {Model.labelName ?? "All Files"}";
-
 }
 
 @section StylesChild {
-
-
-
-@* Styles specific to this page (file list table, share modal elements, etc.) *@
-<style type="text/css">
-    /* Accordion styles for potential use in share modal or other features */
-    .accordion-button {
-        font-size: 1rem;
-        padding: 0.8rem 1.25rem;
+<style>
+    #tblMyFiles td { vertical-align: middle; }
+    #tblMyFiles .fa-2x { font-size: 1.6rem; }
+    .text-truncate.filename    { max-width: 220px; }
+    .text-truncate.description { max-width: 260px; }
+    #dropZone {
+        border: 2px dashed #ced4da; border-radius: .75rem;
+        transition: background .2s, border-color .2s; cursor: pointer;
     }
+    #dropZone.drag-over { background: #e8f4ff; border-color: #0d6efd; }
+    #modalDropZone { border: 2px dashed #ced4da; border-radius: .5rem; cursor: pointer; transition: background .2s; }
+    #modalDropZone.drag-over { background: #e8f4ff; border-color: #0d6efd; }
+    .accordion-button { font-size: .95rem; padding: .7rem 1.1rem; }
+    .accordion-body { padding-left: 2.5rem !important; }
+    .form-check { display: flex; align-items: center; }
+    .form-check-input[type="checkbox"] { margin-top: 0; }
+    .form-check-label.text-truncate { max-width: 190px; }
+    #toastContainer { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; min-width: 260px; }
 
-    .accordion-body {
-        padding-left: 3rem !important; /* Indent for user list within department */
+    /* ── Share modal ── */
+    .share-modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 24px 64px rgba(0,0,0,.18);
+        overflow: hidden;
     }
-    /* Form check styles for alignment */
-    .form-check {
+    .share-modal-header {
+        background: #fff;
+        border-bottom: 1px solid #f3f4f6;
+        padding: 1.1rem 1.4rem;
+    }
+    .share-modal-icon {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        background: #ede9fe;
+        color: #4f46e5;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+    /* Two-panel layout */
+    .share-layout {
+        display: flex;
+        min-height: 380px;
+    }
+    /* Left picker */
+    .share-picker {
+        flex: 1;
+        border-right: 1px solid #f3f4f6;
+        display: flex;
+        flex-direction: column;
+    }
+    .share-search-wrap {
+        position: relative;
+        padding: .85rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .share-search-icon {
+        position: absolute;
+        left: 1.65rem; top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af; font-size: .85rem;
+        pointer-events: none;
+    }
+    .share-search-input {
+        width: 100%;
+        border: 1.5px solid #e9ecef;
+        border-radius: 8px;
+        padding: .45rem .75rem .45rem 2.1rem;
+        font-size: .875rem;
+        outline: none;
+        transition: border-color .15s;
+        background: #f9fafb;
+    }
+    .share-search-input:focus {
+        border-color: #4f46e5;
+        background: #fff;
+    }
+    .share-list-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: .5rem 0;
+        scrollbar-width: thin;
+        scrollbar-color: #e5e7eb transparent;
+    }
+    .share-list-scroll::-webkit-scrollbar { width: 4px; }
+    .share-list-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+    .share-loading {
+        padding: 2rem;
+        text-align: center;
+        color: #9ca3af;
+        font-size: .875rem;
+    }
+    /* Department group */
+    .share-dept-group { margin-bottom: .25rem; }
+    .share-dept-header {
         display: flex;
         align-items: center;
+        gap: .6rem;
+        padding: .45rem 1rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background .12s;
     }
-
-    .form-check-input[type="checkbox"] {
-        margin-top: 0; /* Adjust vertical alignment */
+    .share-dept-header:hover { background: #f9fafb; }
+    .share-dept-icon {
+        width: 28px; height: 28px;
+        border-radius: 7px;
+        background: #fef3c7;
+        color: #d97706;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .75rem; flex-shrink: 0;
     }
-    /* Text truncation for labels in lists */
-    .form-check-label.text-truncate {
-        max-width: 200px;
+    .share-dept-name {
+        font-size: .85rem;
+        font-weight: 600;
+        color: #374151;
+        flex: 1;
+    }
+    .share-dept-count {
+        font-size: .7rem;
+        background: #f3f4f6;
+        color: #6b7280;
+        border-radius: 20px;
+        padding: 1px 7px;
+        font-weight: 600;
+    }
+    .share-dept-toggle {
+        color: #9ca3af;
+        font-size: .7rem;
+        transition: transform .2s;
+    }
+    .share-dept-toggle.open { transform: rotate(90deg); }
+    .share-dept-select-all {
+        width: 15px; height: 15px;
+        cursor: pointer;
+        accent-color: #4f46e5;
+        flex-shrink: 0;
+    }
+    /* User rows */
+    .share-users-list {
+        padding: .15rem 0 .15rem 1rem;
+    }
+    .share-user-row {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        padding: .38rem 1rem .38rem .5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background .1s;
+    }
+    .share-user-row:hover { background: #f9fafb; }
+    .share-user-row.selected { background: #f5f3ff; }
+    .share-user-avatar {
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        background: #e0e7ff;
+        color: #4f46e5;
+        font-size: .7rem;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .share-user-name {
+        font-size: .85rem;
+        color: #374151;
+        flex: 1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
-    /* Styles for the file list table */
-    #tblMyFiles td {
-        vertical-align: middle; /* Vertically align content in table cells */
+    .share-user-check {
+        width: 15px; height: 15px;
+        accent-color: #4f46e5;
+        cursor: pointer;
+        flex-shrink: 0;
     }
-
-    #tblMyFiles .fa-2x {
-        font-size: 1.8rem; /* Increase size of file type icons */
+    /* Right panel */
+    .share-selected-panel {
+        width: 200px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        background: #fafafa;
     }
-    /* Specific styling for truncated text in file list columns */
-    .text-truncate.filename {
-        max-width: 250px;
+    .share-selected-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .85rem 1rem .6rem;
+        border-bottom: 1px solid #f3f4f6;
     }
-
-    .text-truncate.description {
-        max-width: 300px;
+    .share-count-badge {
+        background: #4f46e5;
+        color: #fff;
+        border-radius: 20px;
+        padding: 1px 8px;
+        font-size: .7rem;
+        font-weight: 700;
+        min-width: 22px;
+        text-align: center;
+    }
+    .share-chips-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: .6rem .75rem;
+        scrollbar-width: thin;
+        scrollbar-color: #e5e7eb transparent;
+    }
+    .share-chips-area::-webkit-scrollbar { width: 3px; }
+    .share-chips-area::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
+    .share-empty-msg {
+        text-align: center;
+        color: #9ca3af;
+        font-size: .78rem;
+        padding: 1.5rem .5rem;
+    }
+    .share-chip {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 20px;
+        padding: .25rem .5rem .25rem .35rem;
+        margin-bottom: .35rem;
+        font-size: .78rem;
+        color: #374151;
+        animation: chipIn .15s ease;
+    }
+    @@keyframes chipIn {
+        from { opacity: 0; transform: scale(.9); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    .share-chip-avatar {
+        width: 20px; height: 20px;
+        border-radius: 50%;
+        background: #ede9fe;
+        color: #4f46e5;
+        font-size: .6rem;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .share-chip-name {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 110px;
+    }
+    .share-chip-remove {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: .65rem;
+        line-height: 1;
+        flex-shrink: 0;
+        transition: color .1s;
+    }
+    .share-chip-remove:hover { color: #dc2626; }
+    .share-selected-footer {
+        padding: .5rem .75rem;
+        border-top: 1px solid #f3f4f6;
+        min-height: 32px;
+    }
+    /* Footer */
+    .share-modal-footer {
+        background: #fff;
+        border-top: 1px solid #f3f4f6;
+        padding: .85rem 1.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    /* Responsive: stack on small screens */
+    @@media (max-width: 575px) {
+        .share-layout { flex-direction: column; }
+        .share-selected-panel { width: 100%; border-right: none; border-top: 1px solid #f3f4f6; min-height: 140px; }
+        .share-picker { border-right: none; }
     }
 </style>
 }
+
 @functions {
-    /// <summary>
-    /// Determines the appropriate Font Awesome icon class based on the file extension.
-    /// Used to visually represent different file types in the file list.
-    /// </summary>
-    /// <param name="fileName">The name of the file (including its extension).</param>
-    /// <returns>A string representing the Font Awesome icon class (e.g., "fa-file-pdf text-danger").</returns>
     public string GetFileIconClass(string fileName)
     {
-        // Get the file extension and convert it to lowercase for case-insensitive comparison.
         var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
-
-        // Use a switch expression to map extensions to corresponding Font Awesome classes and colors.
         return ext switch
         {
-            ".pdf" => "fa-file-pdf text-danger",
-            ".doc" or ".docx" => "fa-file-word text-primary",
-            ".xls" or ".xlsx" => "fa-file-excel text-success",
-            ".jpg" or ".jpeg" or ".png" or ".gif" => "fa-file-image text-warning",
-            ".zip" or ".rar" => "fa-file-archive text-muted",
-            ".txt" => "fa-file-alt text-dark",
-            _ => "fa-file text-secondary" // Default icon for any other file type
+            ".pdf"                                   => "fa-file-pdf text-danger",
+            ".doc" or ".docx"                        => "fa-file-word text-primary",
+            ".xls" or ".xlsx"                        => "fa-file-excel text-success",
+            ".jpg" or ".jpeg" or ".png" or ".gif"
+                or ".webp"                           => "fa-file-image text-warning",
+            ".zip" or ".rar" or ".7z"                => "fa-file-archive text-muted",
+            ".txt"                                   => "fa-file-alt text-dark",
+            ".mp4" or ".mov" or ".avi"               => "fa-file-video text-purple",
+            ".mp3" or ".wav"                         => "fa-file-audio text-info",
+            _                                        => "fa-file text-secondary"
         };
+    }
+
+    public string FormatSize(long bytes)
+    {
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024)     return $"{bytes / 1_024.0:F0} KB";
+        return $"{bytes} B";
     }
 }
 
-
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+@* ── Top action bar ── *@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <div class="btn-group">
         <a href="javascript:;" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#createLabelModal">
-            <i class="fa fa-tag me-1 fs-5"></i> New Label
+            <i class="fa fa-tag me-1"></i> New Label
         </a>
-        <a href="javascript:;" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
-            <i class="fa fa-upload me-1 fs-5"></i> Upload
+        <a href="javascript:;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+            <i class="fa fa-upload me-1"></i> Upload
         </a>
     </div>
 
-    <div class="btn-group">
-        <button class="btn btn-outline-secondary" onclick="openSearch()">
-            <i class="fa fa-search me-1"></i>
-        </button>
-        <button class="btn btn-outline-secondary" onclick="downloadCurrentFolderZip()">
-            <i class="fa fa-download me-1"></i>
-        </button>
-        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-            <i class="fa fa-sort me-1"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="#">Name A–Z</a></li>
-            <li><a class="dropdown-item" href="#">Newest First</a></li>
-            <li><a class="dropdown-item" href="#">Size</a></li>
-        </ul>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div class="input-group input-group-sm" style="width:220px;">
+            <span class="input-group-text bg-white border-end-0"><i class="fa fa-search text-muted"></i></span>
+            <input id="fileSearch" type="text" class="form-control border-start-0 ps-0"
+                   placeholder="Search files…" oninput="filterTable()" />
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fa fa-sort me-1"></i> Sort
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" onclick="sortTable('name','asc');return false;"><i class="fa fa-sort-alpha-down me-2"></i>Name A–Z</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortTable('name','desc');return false;"><i class="fa fa-sort-alpha-up me-2"></i>Name Z–A</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortTable('date','desc');return false;"><i class="fa fa-calendar-alt me-2"></i>Newest First</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortTable('date','asc');return false;"><i class="fa fa-calendar me-2"></i>Oldest First</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortTable('size','desc');return false;"><i class="fa fa-weight-hanging me-2"></i>Largest First</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortTable('size','asc');return false;"><i class="fa fa-weight-hanging me-2"></i>Smallest First</a></li>
+            </ul>
+        </div>
     </div>
 </div>
 
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb bg-light px-3 py-2 rounded small">
+@* ── Breadcrumb ── *@
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb bg-light px-3 py-2 rounded small mb-0">
         <li class="breadcrumb-item">
             <a href="@Url.Action("Index", "File", new { id = string.Empty })" class="text-decoration-none">
                 <i class="fa fa-folder-open me-1"></i> My Files
             </a>
         </li>
-        <li class="breadcrumb-item active">
-            @* اگر labelId وجود دارد، لینک به آن را نمایش بده *@
-            @if (!string.IsNullOrEmpty(Model.labelId.ToString()))
-            {
+        @if (Model.labelId.HasValue)
+        {
+            <li class="breadcrumb-item active">
                 <a href="@Url.Action("Index", "File", new { id = Model.labelId })" class="text-decoration-none">@Model.labelName</a>
-            }
-            else
-            {
-                <span>@Model.labelName</span>
-            }
-        </li>
+            </li>
+        }
     </ol>
 </nav>
 
-@* File List Section *@
+@* ── File count ── *@
+@if (Model.files != null && Model.files.Any())
+{
+    <div class="d-flex align-items-center mb-2 gap-2">
+        <span class="badge bg-secondary rounded-pill" id="fileCountBadge">@Model.files.Count file(s)</span>
+        <span class="text-muted small" id="noResultsMsg" style="display:none;">No files match your search.</span>
+    </div>
+}
+
+@* ── File table ── *@
 <div class="card border-0 shadow-sm rounded-4">
-    <div class="card-body">
+    <div class="card-body p-0">
         @if (Model.files != null && Model.files.Any())
         {
-            <div class="table-responsive" style="min-height:600px;">
-                @* File table with hover and striped effects *@
-                <table id="tblMyFiles" class="table table-hover table-striped align-middle">
-                    <thead>
+            <div class="table-responsive" style="min-height:520px;">
+                <table id="tblMyFiles" class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th scope="col"></th> @* Icon column *@
-                            <th scope="col">File Name</th>
-                            <th scope="col">Description</th>
-                            <th scope="col">Size</th>
-                            <th scope="col">Created At</th>
-                            <th scope="col">Members</th> @* Placeholder column, if needed later *@
-                            <th scope="col">Actions</th>
+                            <th style="width:48px;"></th>
+                            <th>File Name</th>
+                            <th>Description</th>
+                            <th style="width:100px;">Size</th>
+                            <th style="width:150px;">Created</th>
+                            <th style="width:90px;">Members</th>
+                            <th style="width:110px;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="fileTableBody">
                         @foreach (var file in Model.files)
                         {
-                            <tr>
-                                @* File icon based on type *@
-                                <td class="text-center"><i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i></td>
-                                @* File Name *@
-                                <td class="text-truncate filename" style="max-width: 250px;">@file.OrginalName</td> @* Increased max-width for filename *@
-                                @* File Description *@
-                                <td class="text-truncate description" style="max-width: 300px;">@file.Description</td> @* Increased max-width for description *@
-                                @* File Size (assuming SizeKB is available) *@
-                                <td>@file.SizeKB KB</td>
-                                @* File Creation Date (formatted) *@
-                                <td>@file.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                @* Members column - currently empty *@
-                                <td></td>
-                                @* Action buttons using dropdown *@
+                            <tr data-id="@file.Id"
+                                data-name="@file.OrginalName?.ToLower()"
+                                data-size="@file.Size"
+                                data-date="@file.CreatedAt.ToString("yyyyMMddHHmm")">
+                                <td class="text-center ps-3">
+                                    <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i>
+                                </td>
+                                <td>
+                                    <span class="text-truncate filename d-block" title="@file.OrginalName">@file.OrginalName</span>
+                                </td>
+                                <td>
+                                    <span class="text-truncate description d-block text-muted small"
+                                          title="@file.Description">
+                                        @(string.IsNullOrWhiteSpace(file.Description) ? "—" : file.Description)
+                                    </span>
+                                </td>
+                                <td class="text-nowrap small">@FormatSize(file.Size)</td>
+                                <td class="text-nowrap small text-muted">@file.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0"
+                                            onclick="openShareModal('@file.Id')" title="Share / manage members">
+                                        <i class="fa fa-users me-1"></i><span class="small">Share</span>
+                                    </button>
+                                </td>
                                 <td>
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fa fa-ellipsis-v"></i> Options
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fa fa-ellipsis-v"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            @* Download Link *@
-                                            <li><a class="dropdown-item" onclick="requestDownload('@file.Id')"><i class="fa fa-download me-2 text-success"></i> Download</a></li>
-                                            @* Share File Link - opens modal *@
-                                            <li><a class="dropdown-item" onclick="openShareModal('@file.Id')"><i class="fa fa-share me-2 text-info"></i> Share File</a></li>
-                                            @* Move/Copy Links - Assuming openItemModal is defined elsewhere *@
-                                            <li><a class="dropdown-item" onclick="openItemModal({ id: '@file.Id', name: '@file.OrginalName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2 text-warning"></i> Move</a></li>
-                                            <li><a class="dropdown-item" onclick="openItemModal({ id: '@file.Id', name: '@file.OrginalName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2 text-muted"></i> Copy</a></li>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="requestDownload('@file.Id'); return false;">
+                                                    <i class="fa fa-download me-2 text-success"></i> Download
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="openShareModal('@file.Id'); return false;">
+                                                    <i class="fa fa-share-alt me-2 text-info"></i> Share
+                                                </a>
+                                            </li>
                                             <li><hr class="dropdown-divider" /></li>
-                                            @* Delete Link - Includes confirmation (assuming deleteItem handles it) *@
-                                            <li><a class="dropdown-item text-danger" onclick="deleteItem('@file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#"
+                                                   onclick="confirmDelete('@file.Id', '@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                                                    <i class="fa fa-trash me-2"></i> Delete
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
                                 </td>
@@ -204,277 +459,605 @@
         }
         else
         {
-            @* Message shown when the label/folder is empty *@
-            <div class="alert alert-light border text-muted text-center p-4 mt-4 rounded-3">
-                <i class="fa fa-folder-open me-2 fs-4 text-warning"></i> This label is empty. Add some files or labels!
+            <div id="dropZone" class="text-center p-5 m-3"
+                 onclick="document.getElementById('dropInput').click()"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event)">
+                <i class="fa fa-cloud-upload-alt fa-3x text-muted mb-3 d-block"></i>
+                <p class="text-muted mb-1 fw-semibold">This label is empty.</p>
+                <p class="text-muted small">Drag &amp; drop files here, or <span class="text-primary">click to browse</span>.</p>
+                <input type="file" id="dropInput" class="d-none" onchange="uploadDroppedFile(this.files)" />
             </div>
         }
     </div>
 </div>
 
+@* ── Toast container ── *@
+<div id="toastContainer"></div>
 
-
-
-
-
-@* Modals Section - These are defined within the page as they are specific to this view's functionality *@
-
-@* Modal for Creating a New Label *@
-<div class="modal fade" id="createLabelModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form asp-action="CreateLabel" method="post" class="modal-content rounded-4 shadow-sm">
-            @Html.AntiForgeryToken() @* Security token for form posting *@
-            <div class="modal-header">
-                <h5 class="modal-title" id="createLabelModalLabel"><i class="fa fa-tag me-2"></i> Create New Label</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+@* ── Delete confirmation modal ── *@
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title text-danger"><i class="fa fa-trash me-2"></i>Delete File</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                @* Hidden input for parentId if creating nested labels is supported *@
-                <input type="hidden" name="parentId" value="" />
-                <label for="labelName" class="form-label">Label Name</label>
-                <input type="text" id="labelName" name="Name" class="form-control form-control-lg" placeholder="Enter label name..." required />
+            <div class="modal-body pt-1">
+                <p class="small mb-0">Delete <strong id="deleteFileName"></strong>? This cannot be undone.</p>
             </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary rounded-pill px-3">Create</button>
-                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-danger rounded-pill" id="confirmDeleteBtn">Delete</button>
             </div>
-        </form>
-    </div>
-</div>
-
-@* Modal for Uploading a File *@
-<div class="modal fade" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form asp-action="UploadFile" method="post" enctype="multipart/form-data" class="modal-content rounded-4 shadow-sm">
-            @Html.AntiForgeryToken() @* Security token *@
-            <div class="modal-header">
-                <h5 class="modal-title" id="uploadFileModalLabel"><i class="fa fa-upload me-2"></i> Upload Files</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                @* File input field *@
-                <input type="file" name="file" class="form-control form-control-lg" required />
-                @* Hidden input to associate the upload with the current label/folder *@
-                <input type="hidden" name="labelId" value="@Model.labelId" />
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary rounded-pill px-3">Upload</button>
-                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-@* Modal for Sharing a File *@
-<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        @* Center the modal *@
-        <div class="modal-content rounded-4 shadow-sm">
-            @* Form for sharing - submission handled by JavaScript *@
-            <form id="shareForm" method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="shareModalLabel"><i class="fa fa-share-alt me-2 text-info"></i> Share File</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    @* Hidden input to store the ID of the file being shared *@
-                    <input type="hidden" id="sharefileId" name="Id" />
-
-                    @* This div will be populated with the department and user list via AJAX *@
-                    <div id="shareContaner" class="accordion" role="tablist">
-                        <!-- Departments and Users will load here -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    @* Submit button that triggers the JavaScript function *@
-                    <button type="submit" class="btn btn-primary rounded-pill px-3" onclick="return submitShareForm()">Share</button>
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
 
+@* ── Create Label modal ── *@
+<div class="modal fade" id="createLabelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form asp-action="CreateLabel" method="post" class="modal-content rounded-4 shadow">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-tag me-2"></i> Create New Label</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="parentId" value="" />
+                <label for="labelName" class="form-label fw-semibold">Label Name</label>
+                <input type="text" id="labelName" name="Name" class="form-control"
+                       placeholder="e.g. Invoices, Reports…" required autofocus />
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary rounded-pill px-4">Create</button>
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
+@* ── Upload File modal ── *@
+<div class="modal fade" id="uploadFileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form asp-action="UploadFile" method="post" enctype="multipart/form-data"
+              class="modal-content rounded-4 shadow" id="uploadForm">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-upload me-2"></i> Upload File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalDropZone" class="text-center p-4 mb-3"
+                     onclick="document.getElementById('modalFileInput').click()"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                     ondragleave="this.classList.remove('drag-over');"
+                     ondrop="handleModalDrop(event)">
+                    <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
+                    <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                </div>
+                <input type="file" id="modalFileInput" name="file" class="d-none"
+                       onchange="showSelectedFile(this)" required />
+                <div id="selectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
+                    <i class="fa fa-paperclip me-1"></i><span id="selectedFileNameText"></span>
+                </div>
+                <input type="hidden" name="labelId" value="@Model.labelId" />
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary rounded-pill px-4">
+                    <i class="fa fa-upload me-1"></i> Upload
+                </button>
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
+@* ── Share File modal ── *@
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content share-modal-content">
+            <div class="modal-header share-modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="share-modal-icon">
+                        <i class="fa fa-share-alt"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0 fw-semibold">Share File</h5>
+                        <div class="text-muted small" id="shareModalFileName" style="font-size:.78rem;"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
-@*
-    This script section contains JavaScript functions for managing file sharing functionality.
-    It includes functions to open the share modal, handle user/department selection,
-    and submit the sharing information to the server.
-*@
+            <div class="modal-body p-0">
+                <input type="hidden" id="sharefileId" />
+
+                <div class="share-layout">
+                    @* ── Left: People picker ── *@
+                    <div class="share-picker">
+                        <div class="share-search-wrap">
+                            <i class="fa fa-search share-search-icon"></i>
+                            <input type="text" id="shareSearch"
+                                   class="share-search-input"
+                                   placeholder="Search people or departments…"
+                                   oninput="filterShareList()" />
+                        </div>
+
+                        <div id="shareContaner" class="share-list-scroll">
+                            <div class="share-loading">
+                                <i class="fa fa-spinner fa-spin me-2"></i> Loading…
+                            </div>
+                        </div>
+                    </div>
+
+                    @* ── Right: Selected people ── *@
+                    <div class="share-selected-panel">
+                        <div class="share-selected-header">
+                            <span class="fw-semibold" style="font-size:.85rem;">Selected</span>
+                            <span id="selectedCount" class="share-count-badge">0</span>
+                        </div>
+
+                        <div id="selectedChips" class="share-chips-area">
+                            <div id="noSelectionMsg" class="share-empty-msg">
+                                <i class="fa fa-user-plus d-block mb-2" style="font-size:1.5rem; opacity:.25;"></i>
+                                Select people from the list
+                            </div>
+                        </div>
+
+                        <div class="share-selected-footer">
+                            <button type="button" class="btn btn-link btn-sm text-muted p-0"
+                                    onclick="clearAllSelected()" id="clearAllBtn" style="display:none; font-size:.78rem;">
+                                Clear all
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer share-modal-footer">
+                <div class="text-muted small" id="shareStatusMsg"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4"
+                            id="shareSubmitBtn" onclick="submitShareForm()" disabled>
+                        <i class="fa fa-share me-1"></i>
+                        Share <span id="shareSubmitCount" class="ms-1"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section ScriptsChild {
-    <script type="text/javascript">
-        // --- File Sharing Modal Related Functions ---
+<script>
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(message, type) {
+    type = type || 'success';
+    var icon = type === 'success' ? 'fa-check-circle text-success'
+             : type === 'danger'  ? 'fa-times-circle text-danger'
+             : 'fa-info-circle text-info';
+    var id = 'toast-' + Date.now();
+    var html = '<div id="' + id + '" class="toast align-items-center border-0 shadow-sm mb-2" role="alert">'
+             + '<div class="d-flex"><div class="toast-body d-flex align-items-center gap-2">'
+             + '<i class="fa ' + icon + '"></i> ' + message
+             + '</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>'
+             + '</div></div>';
+    document.getElementById('toastContainer').insertAdjacentHTML('beforeend', html);
+    var el = document.getElementById(id);
+    new bootstrap.Toast(el, { delay: 3500 }).show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
 
-        /**
-         * Opens the share modal and initiates the loading of department and user data.
-         * This function is typically called when a user clicks a "Share" button for a file.
-         * @@param {string} fileId - The unique identifier of the file to be shared.
-         */
-        function openShareModal(id) {
-            // Set the hidden input field with the file ID to be shared.
-            document.getElementById("sharefileId").value = id;
+// ── Search ────────────────────────────────────────────────────
+function filterTable() {
+    var q = document.getElementById('fileSearch').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('#fileTableBody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+        var name = row.dataset.name || '';
+        var desc = (row.querySelector('.description') || {}).textContent || '';
+        var match = !q || name.includes(q) || desc.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    var badge = document.getElementById('fileCountBadge');
+    var noMsg = document.getElementById('noResultsMsg');
+    if (badge) badge.textContent = visible + ' file(s)';
+    if (noMsg) noMsg.style.display = visible === 0 ? '' : 'none';
+}
 
-            // Initialize the Bootstrap modal instance.
-            var modal = new bootstrap.Modal(document.getElementById("shareModal"));
+// ── Sort ──────────────────────────────────────────────────────
+function sortTable(col, dir) {
+    var tbody = document.getElementById('fileTableBody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+        var va, vb;
+        if (col === 'name') { va = a.dataset.name || ''; vb = b.dataset.name || ''; }
+        else if (col === 'size') { va = +a.dataset.size; vb = +b.dataset.size; }
+        else if (col === 'date') { va = a.dataset.date || ''; vb = b.dataset.date || ''; }
+        else return 0;
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+}
 
-            // Construct the URL to fetch the list of departments and users for sharing.
-            // window.location.origin gets the base URL of the current site.
-            const url = new URL('/File/GetShareList', window.location.origin);
-            url.searchParams.set('fileId', id); // Add fileId as a query parameter
+// ── Delete ────────────────────────────────────────────────────
+var _pendingDeleteId = null;
 
-            // Get the container where the department/user list will be loaded.
-            const shareContainer = document.getElementById("shareContaner");
-            // Display a loading indicator while data is being fetched.
-            shareContainer.innerHTML = "<div class='text-muted fst-italic p-3'>Loading Departments...</div>";
+function confirmDelete(fileId, fileName) {
+    _pendingDeleteId = fileId;
+    document.getElementById('deleteFileName').textContent = fileName;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
 
-            // Fetch the department and user list HTML from the server using the constructed URL.
-            fetch(url)
-                .then(response => {
-                    // Check if the network response was successful (status code 200-299).
-                    if (!response.ok) {
-                        throw new Error(`Server error: ${response.status}`); // Throw an error with status for better debugging.
-                    }
-                    // Return the response body as text (HTML).
-                    return response.text();
-                })
-                .then(html => {
-                    // Once the HTML is received, update the container's content.
-                    shareContainer.innerHTML = html;
-                    // Set up event listeners for the newly loaded checkboxes and "select all" functionality.
-                    setupShareEventListeners();
-                })
-                .catch(err => {
-                    // Log any errors encountered during the fetch process to the console.
-                    console.error("⛔️ Error fetching department tree:", err);
-                    // Display an error message to the user in the container.
-                    shareContainer.innerHTML = "<div class='text-danger p-3'>Error loading departments.</div>";
-                });
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (!_pendingDeleteId) return;
+    var modalEl = document.getElementById('deleteModal');
+    var modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 
-            // Display the modal to the user.
-            modal.show();
+    fetch('/File/DeleteFile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(_pendingDeleteId)
+    })
+    .then(function(res) {
+        if (res.ok) {
+            var row = document.querySelector('#fileTableBody tr[data-id="' + _pendingDeleteId + '"]');
+            if (row) row.remove();
+            showToast('File deleted successfully.');
+            var remaining = document.querySelectorAll('#fileTableBody tr').length;
+            var badge = document.getElementById('fileCountBadge');
+            if (badge) badge.textContent = remaining + ' file(s)';
+        } else {
+            showToast('Failed to delete file.', 'danger');
         }
+        _pendingDeleteId = null;
+    })
+    .catch(function() {
+        showToast('An error occurred while deleting.', 'danger');
+        _pendingDeleteId = null;
+    });
+});
 
-        /**
-         * Sets up event listeners for checkboxes related to sharing (departments and users).
-         * This function is called after the share modal's content has been loaded via AJAX.
-         */
-        function setupShareEventListeners() {
-            // --- Handle "Select All" checkboxes for departments ---
-            // Find all checkboxes with the class 'department-select-all'.
-            document.querySelectorAll('.department-select-all').forEach(checkbox => {
-                // Add an event listener for the 'change' event (when checkbox state is toggled).
-                checkbox.addEventListener('change', function() {
-                    // Get the department ID associated with this "Select All" checkbox.
-                    const departmentId = this.getAttribute('data-department-id');
-                    // Check if the checkbox is currently checked.
-                    const isChecked = this.checked;
+// ── Drag & drop (empty state) ─────────────────────────────────
+function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.add('drag-over');
+}
+function handleDragLeave(e) {
+    document.getElementById('dropZone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drag-over');
+    uploadDroppedFile(e.dataTransfer.files);
+}
+function uploadDroppedFile(files) {
+    if (!files || files.length === 0) return;
+    document.getElementById('modalFileInput').files = files;
+    showSelectedFile(document.getElementById('modalFileInput'));
+    new bootstrap.Modal(document.getElementById('uploadFileModal')).show();
+}
 
-                    // Find all user checkboxes that belong to this specific department.
-                    document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]`).forEach(userCheckbox => {
-                        // Set the checked state of each user checkbox to match the "Select All" checkbox.
-                        userCheckbox.checked = isChecked;
-                    });
+// ── Upload modal drag & drop ──────────────────────────────────
+function handleModalDrop(e) {
+    e.preventDefault();
+    document.getElementById('modalDropZone').classList.remove('drag-over');
+    var files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.getElementById('modalFileInput').files = files;
+        showSelectedFile(document.getElementById('modalFileInput'));
+    }
+}
+function showSelectedFile(input) {
+    var info = document.getElementById('selectedFileInfo');
+    var nameEl = document.getElementById('selectedFileNameText');
+    if (input.files && input.files.length > 0) {
+        nameEl.textContent = input.files[0].name;
+        info.style.display = '';
+    }
+}
+
+// ── Share modal ───────────────────────────────────────────────
+var _shareData = [];   // flat list of { userId, userName, deptId, deptName }
+var _selected  = {};   // { userId: { id, name } }
+
+function openShareModal(fileId) {
+    // reset state
+    _shareData = [];
+    _selected  = {};
+    document.getElementById('sharefileId').value = fileId;
+    document.getElementById('shareSearch').value = '';
+    document.getElementById('shareStatusMsg').textContent = '';
+    renderChips();
+    updateSubmitBtn();
+
+    var container = document.getElementById('shareContaner');
+    container.innerHTML = '<div class="share-loading"><i class="fa fa-spinner fa-spin me-2"></i> Loading…</div>';
+
+    // try to get the file name from the table row
+    var row = document.querySelector('#fileTableBody tr[data-id="' + fileId + '"]');
+    var fname = row ? (row.querySelector('.filename') || {}).textContent || '' : '';
+    document.getElementById('shareModalFileName').textContent = fname.trim();
+
+    new bootstrap.Modal(document.getElementById('shareModal')).show();
+
+    var url = new URL('/File/GetShareList', window.location.origin);
+    url.searchParams.set('fileId', fileId);
+
+    fetch(url)
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+        })
+        .then(function(html) {
+            // parse the returned HTML using the clean data attributes from _DepartmentList
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            tmp.querySelectorAll('.share-user-data').forEach(function(el) {
+                _shareData.push({
+                    userId:   el.getAttribute('data-user-id'),
+                    userName: el.getAttribute('data-user-name'),
+                    deptId:   el.getAttribute('data-dept-id'),
+                    deptName: (tmp.querySelector('.share-dept-data[data-dept-id="' + el.getAttribute('data-dept-id') + '"]') || {}).getAttribute
+                              ? tmp.querySelector('.share-dept-data[data-dept-id="' + el.getAttribute('data-dept-id') + '"]').getAttribute('data-dept-name')
+                              : ''
                 });
             });
+            renderShareList(_shareData);
+        })
+        .catch(function(err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-danger p-3 text-center"><i class="fa fa-exclamation-circle me-2"></i>Error loading people.</div>';
+        });
+}
 
-            // --- Handle individual user checkboxes and update the parent "Select All" checkbox ---
-            // Find all individual user checkboxes.
-            document.querySelectorAll('.user-checkbox').forEach(checkbox => {
-                // Add an event listener for the 'change' event.
-                checkbox.addEventListener('change', function() {
-                    // Get the department ID for the current user checkbox.
-                    const departmentId = this.getAttribute('data-department-id');
+function renderShareList(data) {
+    var container = document.getElementById('shareContaner');
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="share-loading text-muted">No people found.</div>';
+        return;
+    }
 
-                    // Find all user checkboxes belonging to this department.
-                    const allUsersInDepartment = document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]`);
-                    // Find only the checked user checkboxes within this department.
-                    const checkedUsersInDepartment = document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]:checked`);
+    // group by dept
+    var depts = {};
+    data.forEach(function(u) {
+        if (!depts[u.deptId]) depts[u.deptId] = { name: u.deptName, users: [] };
+        depts[u.deptId].users.push(u);
+    });
 
-                    // Find the corresponding "Select All" checkbox for this department.
-                    const selectAllCheckbox = document.getElementById(`selectAll-${departmentId}`);
+    var html = '';
+    Object.keys(depts).forEach(function(deptId) {
+        var dept  = depts[deptId];
+        var count = dept.users.length;
+        html += '<div class="share-dept-group" data-dept-id="' + deptId + '">';
+        html += '<div class="share-dept-header" onclick="toggleDept(\'' + deptId + '\')">';
+        html += '<div class="share-dept-icon"><i class="fa fa-users"></i></div>';
+        html += '<span class="share-dept-name">' + escHtml(dept.name || 'Department') + '</span>';
+        html += '<span class="share-dept-count">' + count + '</span>';
+        html += '<input type="checkbox" class="share-dept-select-all" id="deptAll-' + deptId + '"'
+              + ' data-dept-id="' + deptId + '" onclick="event.stopPropagation(); toggleDeptAll(\'' + deptId + '\', this.checked)" />';
+        html += '<i class="fa fa-chevron-right share-dept-toggle" id="toggle-' + deptId + '"></i>';
+        html += '</div>';
+        html += '<div class="share-users-list" id="users-' + deptId + '" style="display:none;">';
+        dept.users.forEach(function(u) {
+            var initials = u.userName.split(' ').filter(Boolean).slice(0,2).map(function(w){ return w[0].toUpperCase(); }).join('');
+            var isSel = !!_selected[u.userId];
+            html += '<div class="share-user-row' + (isSel ? ' selected' : '') + '"'
+                  + ' data-user-id="' + u.userId + '" data-user-name="' + escAttr(u.userName) + '"'
+                  + ' data-dept-id="' + deptId + '"'
+                  + ' onclick="toggleUser(\'' + u.userId + '\', \'' + escAttr(u.userName) + '\', \'' + escAttr(initials) + '\')">';
+            html += '<div class="share-user-avatar">' + initials + '</div>';
+            html += '<span class="share-user-name">' + escHtml(u.userName) + '</span>';
+            html += '<input type="checkbox" class="share-user-check" id="uchk-' + u.userId + '"'
+                  + (isSel ? ' checked' : '') + ' onclick="event.stopPropagation();" />';
+            html += '</div>';
+        });
+        html += '</div></div>';
+    });
 
-                    // If the "Select All" checkbox exists...
-                    if (selectAllCheckbox) {
-                        // Update its checked state: it should be checked only if all users in the department are checked.
-                        selectAllCheckbox.checked = allUsersInDepartment.length === checkedUsersInDepartment.length;
-                    }
-                });
-            });
+    container.innerHTML = html;
+}
+
+function toggleDept(deptId) {
+    var list   = document.getElementById('users-' + deptId);
+    var icon   = document.getElementById('toggle-' + deptId);
+    var isOpen = list.style.display !== 'none';
+    list.style.display = isOpen ? 'none' : '';
+    if (icon) icon.classList.toggle('open', !isOpen);
+}
+
+function toggleDeptAll(deptId, checked) {
+    var dept = _shareData.filter(function(u) { return u.deptId === deptId; });
+    dept.forEach(function(u) {
+        var initials = u.userName.split(' ').filter(Boolean).slice(0,2).map(function(w){ return w[0].toUpperCase(); }).join('');
+        if (checked) {
+            _selected[u.userId] = { id: u.userId, name: u.userName, initials: initials };
+        } else {
+            delete _selected[u.userId];
         }
+    });
+    // re-render list to reflect state
+    renderShareList(filterShareData());
+    renderChips();
+    updateSubmitBtn();
+    // re-open the dept
+    var list = document.getElementById('users-' + deptId);
+    if (list) list.style.display = '';
+    var icon = document.getElementById('toggle-' + deptId);
+    if (icon) icon.classList.add('open');
+}
 
-        /**
-         * Collects the IDs of all selected users and submits them to the server via Fetch API.
-         * This function is called when the user clicks the "Share" button in the modal.
-         * @@returns {boolean} Returns false to prevent the default HTML form submission.
-         */
-        function submitShareForm() {
-            const selectedUserIds = [];
-            // Iterate over all checked user checkboxes and collect their values (user IDs).
-            document.querySelectorAll('.user-checkbox:checked').forEach(checkbox => {
-                selectedUserIds.push(checkbox.value); // The 'value' attribute holds the user ID.
-            });
+function toggleUser(userId, userName, initials) {
+    if (_selected[userId]) {
+        delete _selected[userId];
+    } else {
+        _selected[userId] = { id: userId, name: userName, initials: initials };
+    }
+    // update row highlight + checkbox
+    var row = document.querySelector('.share-user-row[data-user-id="' + userId + '"]');
+    if (row) {
+        row.classList.toggle('selected', !!_selected[userId]);
+        var chk = row.querySelector('.share-user-check');
+        if (chk) chk.checked = !!_selected[userId];
+    }
+    // update dept select-all
+    var deptId = row ? row.getAttribute('data-dept-id') : null;
+    if (deptId) syncDeptCheckbox(deptId);
+    renderChips();
+    updateSubmitBtn();
+}
 
-            // Get the file ID from the hidden input field.
-            const fileId = document.getElementById('sharefileId').value;
+function syncDeptCheckbox(deptId) {
+    var dept  = _shareData.filter(function(u) { return u.deptId === deptId; });
+    var selCount = dept.filter(function(u) { return !!_selected[u.userId]; }).length;
+    var cb = document.getElementById('deptAll-' + deptId);
+    if (cb) cb.checked = selCount === dept.length && dept.length > 0;
+}
 
-            // Log the collected data to the console for debugging purposes.
-            console.log("File ID:", fileId);
-            console.log("Selected User IDs:", selectedUserIds);
+function filterShareList() {
+    renderShareList(filterShareData());
+    // re-open depts that have matches
+    var q = document.getElementById('shareSearch').value.toLowerCase().trim();
+    if (q) {
+        Object.keys(groupByDept(filterShareData())).forEach(function(deptId) {
+            var list = document.getElementById('users-' + deptId);
+            var icon = document.getElementById('toggle-' + deptId);
+            if (list) list.style.display = '';
+            if (icon) icon.classList.add('open');
+        });
+    }
+}
 
-            // --- Send the data to the server using Fetch API ---
-            // IMPORTANT: Ensure the URL '/File/ShareFile' points to your correct backend endpoint.
-            fetch('/File/ShareFile', {
-                method: 'POST', // Use POST method for sending data.
-                headers: {
-                    'Content-Type': 'application/json', // Specify that the request body is JSON.
-                    // If using AntiForgeryToken, uncomment and include the token:
-                    // 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                // Convert the JavaScript object containing fileId and selectedUserIds to a JSON string.
-                // It's recommended to send an object for clarity, e.g., { fileId: fileId, sharedToUserIds: selectedUserIds }
-                body: JSON.stringify({
-                    fileId: fileId,
-                    sharedToUserIds: selectedUserIds
-                })
-            })
-            .then(response => {
-                // Check if the HTTP response was successful.
-                if (!response.ok) {
-                    // If not OK, log the error and throw an exception to be caught by .catch().
-                    console.error('Error sharing file:', response.statusText);
-                    alert('Failed to share file. Please try again.');
-                    // Reject the promise to prevent further .then() execution and signal an error.
-                    return Promise.reject(`HTTP error! status: ${response.status}`);
-                }
-                // Parse the response body as JSON. Adjust if your endpoint returns text or other format.
-                return response.json();
-            })
-            .then(data => {
-                // Process the successful response from the server.
-                console.log('File shared successfully:', data);
-                alert('File shared successfully!'); // Provide user feedback.
+function filterShareData() {
+    var q = document.getElementById('shareSearch').value.toLowerCase().trim();
+    if (!q) return _shareData;
+    return _shareData.filter(function(u) {
+        return u.userName.toLowerCase().includes(q) || (u.deptName || '').toLowerCase().includes(q);
+    });
+}
 
-                // Close the modal after successful operation.
-                // Get the modal instance using its ID.
-                var modalElement = document.getElementById("shareModal");
-                var modal = bootstrap.Modal.getInstance(modalElement);
-                // If the modal instance exists, hide it.
-                if (modal) {
-                    modal.hide();
-                }
-            })
-            .catch(error => {
-                // Handle any errors that occurred during the fetch or processing.
-                console.error('Error submitting share form:', error);
-                alert('An error occurred while sharing the file.');
-            });
+function groupByDept(data) {
+    var depts = {};
+    data.forEach(function(u) {
+        if (!depts[u.deptId]) depts[u.deptId] = [];
+        depts[u.deptId].push(u);
+    });
+    return depts;
+}
 
-            // Prevent the default HTML form submission behavior, as we are handling it with Fetch API.
-            return false;
-        }
-    </script>
+function renderChips() {
+    var area    = document.getElementById('selectedChips');
+    var emptyMsg = document.getElementById('noSelectionMsg');
+    var clearBtn = document.getElementById('clearAllBtn');
+    var keys    = Object.keys(_selected);
 
+    if (keys.length === 0) {
+        area.innerHTML = '';
+        area.appendChild(emptyMsg);
+        emptyMsg.style.display = '';
+        clearBtn.style.display = 'none';
+    } else {
+        emptyMsg.style.display = 'none';
+        clearBtn.style.display = '';
+        // rebuild chips
+        var html = '';
+        keys.forEach(function(uid) {
+            var u = _selected[uid];
+            html += '<div class="share-chip" id="chip-' + uid + '">';
+            html += '<div class="share-chip-avatar">' + escHtml(u.initials || '?') + '</div>';
+            html += '<span class="share-chip-name" title="' + escAttr(u.name) + '">' + escHtml(u.name) + '</span>';
+            html += '<button type="button" class="share-chip-remove" onclick="removeSelected(\'' + uid + '\')" title="Remove">'
+                  + '<i class="fa fa-times"></i></button>';
+            html += '</div>';
+        });
+        area.innerHTML = html;
+        area.appendChild(emptyMsg);
+    }
 
+    document.getElementById('selectedCount').textContent = keys.length;
+}
+
+function removeSelected(userId) {
+    delete _selected[userId];
+    // uncheck in list
+    var row = document.querySelector('.share-user-row[data-user-id="' + userId + '"]');
+    if (row) {
+        row.classList.remove('selected');
+        var chk = row.querySelector('.share-user-check');
+        if (chk) chk.checked = false;
+        var deptId = row.getAttribute('data-dept-id');
+        if (deptId) syncDeptCheckbox(deptId);
+    }
+    renderChips();
+    updateSubmitBtn();
+}
+
+function clearAllSelected() {
+    _selected = {};
+    document.querySelectorAll('.share-user-row.selected').forEach(function(r) {
+        r.classList.remove('selected');
+        var chk = r.querySelector('.share-user-check');
+        if (chk) chk.checked = false;
+    });
+    document.querySelectorAll('.share-dept-select-all').forEach(function(cb) { cb.checked = false; });
+    renderChips();
+    updateSubmitBtn();
+}
+
+function updateSubmitBtn() {
+    var count = Object.keys(_selected).length;
+    var btn   = document.getElementById('shareSubmitBtn');
+    var label = document.getElementById('shareSubmitCount');
+    btn.disabled = count === 0;
+    label.textContent = count > 0 ? '(' + count + ')' : '';
+}
+
+function submitShareForm() {
+    var ids = Object.keys(_selected);
+    if (ids.length === 0) return;
+
+    var btn = document.getElementById('shareSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Sharing…';
+
+    var fileId = document.getElementById('sharefileId').value;
+
+    fetch('/File/ShareFile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: fileId, sharedToUserIds: ids })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function() {
+        var modal = bootstrap.Modal.getInstance(document.getElementById('shareModal'));
+        if (modal) modal.hide();
+        showToast('Shared with ' + ids.length + ' person' + (ids.length > 1 ? 's' : '') + '.', 'success');
+    })
+    .catch(function() {
+        showToast('Failed to share file.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-share me-1"></i> Share <span id="shareSubmitCount">(' + ids.length + ')</span>';
+    });
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+    return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+</script>
 }

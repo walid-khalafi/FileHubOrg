@@ -1,0 +1,80 @@
+@using FileHubOrg.Domain.Entities.File
+@using FileHubOrg.Domain.Entities.Organization
+
+@{
+    var userLabels   = ViewData["userLabels"]  as List<Label>       ?? new List<Label>();
+    var departments  = ViewData["departments"] as List<Department>  ?? new List<Department>();
+    var currentId    = ViewData["currentId"]   as string;
+    var currentCtrl  = ViewData["currentController"] as string;
+}
+
+<nav class="sidebar-nav d-flex flex-column gap-1">
+
+    @* ── All Files ── *@
+    <a href="@Url.Action("Index", "File", new { id = string.Empty })"
+       class="sidebar-item @(currentCtrl == "File" && string.IsNullOrEmpty(currentId) ? "active" : "")">
+        <span class="item-icon"><i class="fa fa-folder-open"></i></span>
+        All Files
+    </a>
+
+    <hr class="sidebar-divider" />
+
+    @* ── Labels ── *@
+    <div class="sidebar-section-title">Labels</div>
+
+    @if (userLabels.Any())
+    {
+        foreach (var label in userLabels)
+        {
+            var isActive = currentCtrl == "File" && currentId == label.Id.ToString();
+            <a href="@Url.Action("Index", "File", new { id = label.Id })"
+               class="sidebar-item @(isActive ? "active" : "")">
+                <span class="item-icon"><i class="fa fa-tag"></i></span>
+                <span class="text-truncate flex-grow-1" title="@label.Name">@label.Name</span>
+                @if (label.Files?.Count > 0)
+                {
+                    <span class="item-badge">@label.Files.Count</span>
+                }
+            </a>
+        }
+    }
+    else
+    {
+        <div class="px-3 py-1 text-muted fst-italic" style="font-size:.8rem;">No labels yet.</div>
+    }
+
+    @* Quick new label trigger *@
+    <a href="javascript:;" class="sidebar-item text-muted"
+       data-bs-toggle="modal" data-bs-target="#createLabelModal"
+       title="Create a new label">
+        <span class="item-icon"><i class="fa fa-plus"></i></span>
+        <span style="font-size:.82rem;">New Label</span>
+    </a>
+
+    <hr class="sidebar-divider" />
+
+    @* ── Departments ── *@
+    <div class="sidebar-section-title">Departments</div>
+
+    @if (departments.Any())
+    {
+        foreach (var dept in departments)
+        {
+            var isActive = currentCtrl == "Department" && currentId == dept.Id.ToString();
+            <a href="@Url.Action("Users", "Department", new { id = dept.Id })"
+               class="sidebar-item @(isActive ? "active" : "")">
+                <span class="item-icon"><i class="fa fa-users"></i></span>
+                <span class="text-truncate flex-grow-1" title="@dept.Name">@dept.Name</span>
+                @if (dept.Members?.Count > 0)
+                {
+                    <span class="item-badge">@dept.Members.Count</span>
+                }
+            </a>
+        }
+    }
+    else
+    {
+        <div class="px-3 py-1 text-muted fst-italic" style="font-size:.8rem;">No departments.</div>
+    }
+
+</nav>

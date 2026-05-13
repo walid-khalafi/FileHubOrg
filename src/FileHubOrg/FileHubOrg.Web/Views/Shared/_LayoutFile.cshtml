@@ -1,290 +1,234 @@
-﻿@*
-    This section of the view is responsible for the main layout structure,
-    including the sidebar and the primary content area.
-    The goal is to make the cards fill available height and enable scrolling
-    for content that exceeds the container's height.
-*@
-
-@using Microsoft.AspNetCore.Identity;
-@using FileHubOrg.Domain.Entities.User;
-@inject FileHubOrg.Application.Interfaces.ILabelService labelService;
-@inject FileHubOrg.Application.Interfaces.IDepartmentService departmentService;
+﻿@using Microsoft.AspNetCore.Identity
+@using FileHubOrg.Domain.Entities.User
+@inject FileHubOrg.Application.Interfaces.ILabelService labelService
+@inject FileHubOrg.Application.Interfaces.IDepartmentService departmentService
 @inject UserManager<ApplicationUser> UserManager
 
 @{
     Layout = "_Layout";
-    var user = await UserManager.GetUserAsync(User);
-    var userLabels = await labelService.GetLabelsAsync(user.Id);
-
+    var user        = await UserManager.GetUserAsync(User);
+    var userLabels  = await labelService.GetLabelsAsync(user!.Id);
     var departments = await departmentService.GetDepartmentsAsync();
+
+    var currentId         = ViewContext.RouteData.Values["id"]?.ToString();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
 }
 
+@section Styles {
+<style>
+    /* ── Layout shell ── */
+    .file-layout {
+        display: flex;
+        gap: 1.25rem;
+        align-items: flex-start;
+        min-height: calc(100vh - 120px);
+    }
 
-@* Add a custom CSS class for scrollable content *@
-@section Styles{
- <style>
-        /* Ensure the main container and row use flexbox for side-by-side layout */
-        .main-content-wrapper {
-            display: flex; /* Use flexbox for layout */
-            flex-direction: column; /* Stack children vertically initially */
-            min-height: 100vh; /* Ensure it takes at least full viewport height */
-        }
-        @@media (min-width: 992px) { /* Apply side-by-side layout on large screens and up */
-            .main-content-wrapper
+    /* ── Sidebar ── */
+    .file-sidebar {
+        width: 240px;
+        flex-shrink: 0;
+        position: sticky;
+        top: calc(60px + 1.5rem);   /* navbar height + page padding */
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #dee2e6 transparent;
+    }
 
-        {
-            flex-direction: row; /* Arrange children horizontally */
-        }
+    .file-sidebar::-webkit-scrollbar { width: 4px; }
+    .file-sidebar::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
 
-        }
+    @@media (max-width: 991px) {
+        .file-sidebar { display: none; }
+        .file-main    { width: 100% !important; }
+    }
 
-        /* Sidebar specific styles */
-        .sidebar-container {
-            /* Adjust width as needed, e.g., 25% or fixed width */
-            /* Use Bootstrap's column classes for responsiveness */
-            display: flex; /* Make sidebar a flex container */
-            flex-direction: column; /* Stack sidebar cards vertically */
-            height: 100%; /* Occupy full height of its parent */
-        }
-        @@media (max-width: 991px) { /* On screens smaller than lg, sidebar takes full width */
-            .sidebar-container
+    /* Sidebar section header */
+    .sidebar-section-title {
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        padding: .5rem .75rem .25rem;
+        margin-bottom: .15rem;
+    }
 
-        {
-            margin-bottom: 20px; /* Add space below sidebar when stacked */
-        }
+    /* Sidebar nav items */
+    .sidebar-nav .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        padding: .42rem .75rem;
+        border-radius: 7px;
+        font-size: .875rem;
+        color: #374151;
+        text-decoration: none;
+        transition: background .12s, color .12s;
+        cursor: pointer;
+    }
 
-        }
+    .sidebar-nav .sidebar-item:hover {
+        background: #f3f4f6;
+        color: #111827;
+    }
 
-        .sidebar-card {
-            height: 100%; /* Each card inside sidebar takes full height */
-            display: flex; /* Make card a flex container */
-            flex-direction: column; /* Stack card content vertically */
-        }
+    .sidebar-nav .sidebar-item.active {
+        background: #ede9fe;
+        color: #4f46e5;
+        font-weight: 600;
+    }
 
-            .sidebar-card .card-body {
-                flex-grow: 1; /* Allow card body to fill available space */
-                overflow-y: auto; /* Enable scrolling for content within sidebar cards */
-                padding: 1rem;
-            }
-        /* Styles for list items in sidebar */
-        .list-group-flush .list-group-item-action {
-            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-        }
+    .sidebar-nav .sidebar-item .item-icon {
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+        font-size: .85rem;
+    }
 
-            .list-group-flush .list-group-item-action:hover {
-                background-color: #f8f9fa;
-                color: #0a58ca;
-            }
+    .sidebar-nav .sidebar-item .item-badge {
+        margin-left: auto;
+        font-size: .65rem;
+        background: #e5e7eb;
+        color: #6b7280;
+        border-radius: 20px;
+        padding: 1px 7px;
+        font-weight: 600;
+    }
 
-            .list-group-flush .list-group-item-action.active {
-                background-color: #e9ecef;
-                color: #000;
-                font-weight: 500;
-            }
+    .sidebar-nav .sidebar-item.active .item-badge {
+        background: #c4b5fd;
+        color: #4f46e5;
+    }
 
-        /* Main Content specific styles */
-        .main-content-container {
-            display: flex; /* Make main content area a flex container */
-            flex-direction: column; /* Stack its children vertically */
-            height: 100%; /* Occupy full height of its parent */
-            overflow: hidden; /* Prevent content from overflowing the container */
-        }
+    /* Sidebar divider */
+    .sidebar-divider {
+        border: none;
+        border-top: 1px solid #f3f4f6;
+        margin: .5rem .75rem;
+    }
 
-        .main-content-card {
-            display: flex; /* Make the main card a flex container */
-            flex-direction: column;
-            height: 100%; /* Ensure card fills its column */
-        }
+    /* ── Main content ── */
+    .file-main {
+        flex: 1;
+        min-width: 0;
+    }
 
-            .main-content-card .card-body {
-                flex-grow: 1; /* Allow card body to grow */
-                overflow-y: auto; /* Enable scrolling within the main content area */
-            }
+    /* ── Mobile sidebar toggle ── */
+    .sidebar-toggle-btn {
+        display: none;
+    }
 
-        /* General table styles */
-        #tblMyFiles td {
-            vertical-align: middle;
-        }
+    @@media (max-width: 991px) {
+        .sidebar-toggle-btn { display: inline-flex; }
+    }
 
-        #tblMyFiles .fa-2x {
-            font-size: 1.8rem;
-        }
+    /* ── Off-canvas sidebar (mobile) ── */
+    #mobileSidebar .offcanvas-header {
+        border-bottom: 1px solid #f3f4f6;
+        padding: 1rem 1.25rem;
+    }
 
-        .text-truncate.filename {
-            max-width: 250px;
-        }
+    #mobileSidebar .offcanvas-body { padding: .75rem; }
 
-        .text-truncate.description {
-            max-width: 300px;
-        }
+    /* ── Shared modal styles ── */
+    .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    }
 
-        /* Styles for modals */
-        .modal-dialog { /* Adjust modal sizing if needed */
-        }
+    .modal-header { border-bottom: 1px solid #f3f4f6; }
+    .modal-footer { border-top: 1px solid #f3f4f6; }
+    .modal-footer .btn { border-radius: 20px; }
 
-        .modal-dialog-centered {
-            justify-content: center;
-        }
-
-        .modal-content {
-            border-radius: 0.75rem;
-            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
-        }
-
-        .modal-header .btn-close {
-            margin: 0;
-        }
-        /* Remove default margin from btn-close */
-        .modal-footer .btn {
-            border-radius: 1.5rem;
-        }
-        /* Rounded buttons in modal footer */
- </style>
+    /* ── Accordion (share modal) ── */
+    .accordion-button { font-size: .9rem; padding: .65rem 1rem; }
+    .accordion-body   { padding-left: 2.25rem !important; }
+</style>
 
     @await RenderSectionAsync("StylesChild", required: false)
 }
 
+@* ── Mobile sidebar toggle button (injected into page top) ── *@
+<div class="d-lg-none mb-3">
+    <button class="btn btn-sm btn-outline-secondary sidebar-toggle-btn"
+            type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
+        <i class="fa fa-bars me-1"></i> Menu
+    </button>
+</div>
 
-@* We are inside the MainContent section, so no need for container py-4 here. *@
-@* The main layout (_LayoutFile.cshtml) already provides the container. *@
+@* ── Main layout ── *@
+<div class="file-layout">
 
-@* Use the new classes to structure the layout *@
-<div class="main-content-wrapper">
-    @* This wrapper will manage the side-by-side layout *@
+    @* ── Desktop Sidebar ── *@
+    <aside class="file-sidebar">
+        @await Html.PartialAsync("_SidebarContent", new ViewDataDictionary(ViewData)
+        {
+            { "userLabels",  userLabels  },
+            { "departments", departments },
+            { "currentId",   currentId   },
+            { "currentController", currentController }
+        })
+    </aside>
 
-    @* 🔷 Sidebar Column *@
-    <div class="col-12 col-lg-3 sidebar-container mb-4 mb-lg-0">
-        @* Apply sidebar container classes *@
-
-        @* Labels Section Card *@
-        <div class="card sidebar-card border-0 shadow-sm rounded-4 mb-4 h-100">
-            <div class="card-body scrollable-content">
-                @* card-body is scrollable *@
-                <h6 class="text-muted mb-3 text-uppercase fw-bold">My Labels</h6>
-                <div id="list-labels" class="list-group list-group-flush">
-                    @if (userLabels != null && userLabels.Any())
-                    {
-                        @foreach (var label in userLabels)
-                        {
-                            <a asp-controller="File" asp-action="Index" asp-route-id="@label.Id"
-                               class="list-group-item list-group-item-action py-2 @(ViewContext.RouteData.Values["id"]?.ToString() == label.Id.ToString() ? "active" : "")">
-                                <i class="fa fa-tag me-2 text-danger"></i> @label.Name
-                            </a>
-                        }
-                    }
-                    else
-                    {
-                        <div class="text-muted fst-italic">No labels created yet.</div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        @* Departments Section Card *@
-        <div class="card sidebar-card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-body scrollable-content">
-                @* card-body is scrollable *@
-                <h6 class="text-muted mb-3 text-uppercase fw-bold">Departments</h6>
-                <div id="list-departments" class="list-group list-group-flush">
-                    @if (departments != null && departments.Any())
-                    {
-                        @foreach (var department in departments)
-                        {
-                            <a asp-controller="Department" asp-action="Users" asp-route-id="@department.Id"
-                               class="list-group-item list-group-item-action py-2 @(ViewContext.RouteData.Values["id"]?.ToString() == department.Id.ToString() ? "active" : "")">
-                                <i class="fa fa-folder me-2 text-primary"></i> @department.Name
-                            </a>
-                        }
-                    }
-                    else
-                    {
-                        <div class="text-muted fst-italic">No departments available.</div>
-                    }
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    @* 🔶 Main Content Column *@
-    @* Takes full width on small screens (col-12) and 9 columns on large screens (col-lg-9) *@
-    <div class="col-12 col-lg-9 main-content-container flex-grow-1">
-        @* flex-grow-1 allows this column to take remaining space *@
-        @* Card to contain the main content *@
-        <div class="card main-content-card border-0 shadow-sm rounded-4 h-100">
-            @* card-body needs to allow scrolling if content is large *@
-            <div class="card-body scrollable-content">
-                @RenderBody() @* This is where the content of the specific page (like Index.cshtml) will be rendered *@
-            </div>
-        </div>
+    @* ── Main content ── *@
+    <div class="file-main">
+        @RenderBody()
     </div>
 </div>
 
-
+@* ── Off-canvas sidebar (mobile) ── *@
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel"
+     style="width:260px;">
+    <div class="offcanvas-header">
+        <h6 class="offcanvas-title fw-bold" id="mobileSidebarLabel">
+            <i class="fa fa-layer-group me-2 text-primary"></i> FileHubOrg
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-2">
+        @await Html.PartialAsync("_SidebarContent", new ViewDataDictionary(ViewData)
+        {
+            { "userLabels",  userLabels  },
+            { "departments", departments },
+            { "currentId",   currentId   },
+            { "currentController", currentController }
+        })
+    </div>
+</div>
 
 @section Scripts {
-    @* Section for page-specific JavaScript. These scripts will be rendered into the main 'Scripts' section of the base layout (_Layout.cshtml or _LayoutFile.cshtml). *@
+<script>
+    function requestDownload(fileId) {
+        fetch('/File/GenerateDownloadToken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fileId)
+        })
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            if (data.downloadUrl) {
+                var a = document.createElement('a');
+                a.href = data.downloadUrl;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                alert('Could not generate a download link.');
+            }
+        })
+        .catch(function(err) {
+            console.error('Download error:', err);
+            alert('An error occurred while downloading. Please try again.');
+        });
+    }
+</script>
 
-    @* Include global scripts first if they are loaded in the base layout's script section *@
-    @* @await Html.PartialAsync("_GlobalScripts") *@ @* Example if you have a partial for global scripts *@
-
-    <script type="text/javascript">
-        /**
-         * Handles the file download process.
-         * It requests a download token from the server, then triggers the download
-         * by creating a hidden link element and simulating a click.
-         * @@param {string} fileId - The unique identifier of the file to be downloaded.
-         */
-        function requestDownload(fileId) {
-            // Construct the fetch request to the server endpoint for generating download tokens.
-            fetch("/File/GenerateDownloadToken", { // IMPORTANT: Ensure this URL is correct for your backend endpoint.
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    // If using AntiForgeryToken, add it here:
-                    // "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                // Send the fileId as a JSON payload. Note: Sending a raw string might require server-side adjustment.
-                // It's often better to send an object: body: JSON.stringify({ fileId: fileId })
-                body: JSON.stringify(fileId)
-            })
-            .then(response => {
-                // Check if the HTTP request was successful.
-                if (!response.ok) {
-                    // Throw an error if the response status is not in the 200-299 range.
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                // Parse the response body as JSON.
-                return response.json();
-            })
-            .then(data => {
-                // Check if the server returned a download URL.
-                if (data.downloadUrl) {
-                    // Create a temporary anchor (link) element to trigger the download.
-                    const link = document.createElement("a");
-                    link.href = data.downloadUrl;
-                    link.style.display = "none"; // Hide the link element from the user.
-                    document.body.appendChild(link); // Append the link to the document body.
-                    link.click(); // Simulate a click to start the download.
-                    document.body.removeChild(link); // Clean up the temporary link element.
-                } else {
-                    // Inform the user if the server did not provide a download URL.
-                    alert("Could not generate a valid download link.");
-                }
-            })
-            .catch(error => {
-                // Handle any errors that occurred during the fetch operation (network issues, parsing errors, etc.).
-                console.error("Error during download request:", error);
-                alert("An error occurred while trying to download the file. Please try again.");
-            });
-        }
-
-        // --- Other page-specific scripts can be added here ---
-        // Example: $(document).ready(function() { /* initialize something */ });
-        // If using jQuery, ensure it's loaded before this script.
-
-    </script>
-
-    @* Render any additional scripts defined in child views (e.g., for modals like sharing) *@
     @await RenderSectionAsync("ScriptsChild", required: false)
 }

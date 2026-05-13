@@ -1,0 +1,31 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model FileHubOrg.Domain.Entities.Organization.Department
+@{
+    // برای اینکه هر دپارتمان id منحصر به فرد خودش رو داشته باشه
+    var departmentId = Model.Id;
+}
+
+<ul class="list-unstyled ps-4 mb-0">
+    @* کمی تورفتگی برای کاربران *@
+    @foreach (var user in Model.Members)
+    {
+        <li class="mb-2">
+            <div class="form-check d-flex align-items-center gap-2">
+                @* این checkbox برای انتخاب کاربر هست *@
+                <input class="form-check-input user-checkbox"
+                       type="checkbox"
+                       name="selectedUsers"
+                       value="@user.Id" @* مقدار value آیدی کاربر هست *@
+                       id="user-@user.Id"
+                       data-department-id="@departmentId" /> @* برای ارتباط با دپارتمان *@
+
+                <i class="fas fa-user text-muted"></i>
+                <label class="form-check-label flex-grow-1 text-truncate" title="@user.FullName">
+                    @user.FullName
+                </label>
+            </div>
+        </li>
+    }
+</ul>

@@ -38,6 +38,62 @@ namespace FileHubOrg.Application.Services
             _env = env;
         }
 
+        public async Task<bool> AddFileMembers(Guid fileId, List<string> userIds)
+        {
+            if (userIds == null || !userIds.Any())
+            {
+                // اگر لیستی از کاربران داده نشده، کاری انجام نمی‌دهیم
+                return false;
+            }
+
+            // دریافت اطلاعات فایل. فرض می‌کنیم GetFileAsync در سرویس دیگری (IFileService) است.
+            var file = await GetFileAsync(fileId);
+
+            if (file == null)
+            {
+                // اگر فایل پیدا نشد، عملیات ناموفق است
+                // می‌توانید یک exception مناسب هم اینجا پرتاب کنید
+                return false;
+            }
+
+            // گرفتن IP Address کاربر فعلی
+            // استفاده از ?. برای جلوگیری از NullReferenceException اگر HttpContext یا Connection null باشند
+            string ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+
+            // ساخت لیست FileMember با استفاده از LINQ برای خوانایی بهتر
+            var newFileMembers = userIds.Select(userId => new FileMember
+            {
+                Id = Guid.NewGuid(),
+                FileMetadataId = fileId,
+                AssignedToId = userId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = file.CreatedBy, // شناسه کاربری که فایل را ایجاد کرده
+                CreatedByIP = ipAddress // IP آدرس کاربر فعلی
+            }).ToList(); // تبدیل نتیجه LINQ به لیست
+
+
+
+            try
+            {
+                // اضافه کردن اعضای جدید به Unit of Work
+                await _unitOfWork.FileMembers.AddRangeAsync(newFileMembers);
+
+                // ذخیره تغییرات در دیتابیس
+                await _unitOfWork.SaveChangesAsync();
+
+                return true; // موفقیت آمیز بود
+            }
+            catch (Exception ex)
+            {
+                // در اینجا لاگ خطا را انجام دهید (مثلا با استفاده از ILogger)
+                // مثال ساده:
+                Console.WriteLine($"Error adding file members for file {fileId}: {ex.Message}");
+
+                // بسته به سیاست برنامه، می‌توانید exception را دوباره پرتاب کنید یا false برگردانید
+                // throw; // پرتاب مجدد exception برای مدیریت در لایه‌های بالاتر
+                return false; // برگرداندن false نشان‌دهنده عدم موفقیت است
+            }
+        }
 
         public Task<bool> DeleteFileAsync(Guid fileId, string userId)
         {
@@ -49,7 +105,7 @@ namespace FileHubOrg.Application.Services
             throw new NotImplementedException();
         }
 
-        public async Task<FileMetaData> GetFileAsync(Guid fileId) => await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x=>x.Id.Equals(fileId));
+        public async Task<FileMetaData> GetFileAsync(Guid fileId) => await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id.Equals(fileId));
 
         public async Task<List<FileMember>> GetFileMembersAsync(string userId, Guid fileId)
         {
