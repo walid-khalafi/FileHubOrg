@@ -17,16 +17,18 @@ namespace FileHubOrg.Web.Controllers
         private readonly IApplicationUserService _userService;
         private readonly IJWTService _jwtService;
         private readonly ILabelService _labelService;
+        private readonly IDepartmentService _departmentService;
 
         public FileController(IFileService fileService,
                               IApplicationUserService userService,
                               IJWTService jwtService,
-                              ILabelService labelService)
+                              ILabelService labelService,IDepartmentService departmentService)
         {
             _fileService = fileService;
             _userService = userService;
             _jwtService = jwtService;
             _labelService = labelService;
+            _departmentService = departmentService;
         }
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -242,5 +244,146 @@ namespace FileHubOrg.Web.Controllers
 
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> GetShareList(Guid fileId)
+        {
+            // 1. --- Input Validation ---
+            // Check if the provided fileId is empty (or default Guid).
+            // An empty fileId might indicate an invalid request.
+            if (fileId == Guid.Empty)
+            {
+                // Log a warning if needed (assuming _logger is available via DI)
+                // _logger.LogWarning("GetShareList called with an empty FileId.");
+
+                // Return a BadRequest response, as the request is invalid.
+                // It's better to return BadRequest than a PartialView with an empty list in this case.
+                return BadRequest("Invalid File ID provided.");
+            }
+
+            // 2. --- Data Retrieval ---
+            try
+            {
+                // Fetch all departments from the department service.
+                // Use null-conditional operator ?. and null-coalescing operator ?? for safety.
+                // This ensures that if _departmentService.GetDepartmentsAsync() returns null,
+                // we get an empty list instead of a NullReferenceException.
+                var departments = await _departmentService.GetDepartmentsAsync() ?? new List<Domain.Entities.Organization.Department>();
+
+                // Prepare the model for the Partial View (_DepartmentList).
+                var model = new ShareListViewModel
+                {
+                    fileId = fileId, // Pass the valid fileId to the model.
+                                     // Assign the fetched departments. If departments list was null, it will be an empty list.
+                    Departments = departments.ToList(),
+                };
+
+                // 3. --- Response ---
+                // Return the Partial View with the populated model.
+                // The view "_DepartmentList" is responsible for rendering the department and user list UI.
+                return PartialView("_DepartmentList", model);
+            }
+            catch (Exception ex)
+            {
+                // --- Exception Handling ---
+                // Log the exception details for troubleshooting.
+                // Using Console.WriteLine is not ideal for production; use ILogger instead.
+                // _logger.LogError(ex, "An error occurred while retrieving departments for sharing file {FileId}.", fileId);
+                Console.WriteLine($"Error in GetShareList for FileId {fileId}: {ex.Message}"); // Keeping original Console.WriteLine as requested.
+
+                // Return a Partial View containing an error message to maintain the modal structure.
+                // This informs the user that the data could not be loaded.
+                // A dedicated error partial view or just HTML string can be returned.
+                return PartialView("_DepartmentList", new ShareListViewModel
+                {
+                    fileId = fileId,
+                    Departments = new List<Domain.Entities.Organization.Department>(), // Ensure Departments list is empty on error
+                    ErrorMessage = "Error loading departments. Please try again later." // Example property to pass error message
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ShareFile([FromBody] ShareFileRequestModel request)
+        {
+            // 1. --- Input Validation ---
+            // Check if the request body is null.
+            if (request == null)
+            {
+                // Log the warning if needed (assuming _logger is available via DI)
+                // _logger.LogWarning("ShareFile request received with null body.");
+                return BadRequest("Invalid request data: Request body is null.");
+            }
+
+            // Check if the model state is valid. This relies on data annotations on the ShareFileRequestModel.
+            if (!ModelState.IsValid)
+            {
+                // Log the validation errors if needed
+                // _logger.LogWarning("ShareFile request received with invalid model state. Errors: {ModelStateErrors}", ModelState);
+                return BadRequest(ModelState); // Return validation errors to the client
+            }
+
+            // Further validation: Ensure FileId is not empty and at least one user ID is provided.
+            if (request.FileId == Guid.Empty)
+            {
+                // _logger.LogWarning("ShareFile request received with an invalid (empty) FileId.");
+                return BadRequest("Invalid File ID provided.");
+            }
+
+            // Check if the SharedToUserIds array is null or empty.
+            // Using 'request.SharedToUserIds?.Any() ?? false' is a safer way to check.
+            if (!(request.SharedToUserIds?.Any() ?? false))
+            {
+                // _logger.LogWarning("ShareFile request for FileId {FileId} received with no users selected.", request.FileId);
+                return BadRequest("No users selected for sharing.");
+            }
+
+            // 2. --- Business Logic Execution ---
+            try
+            {
+                // Convert the array of user IDs to a List<string> for the service method.
+                List<string> userIds = request.SharedToUserIds.ToList();
+                Guid fileGuid = request.FileId;
+
+                // Call the service method to add members to the file.
+                // Assuming _fileService is injected and has AddFileMembers method.
+                bool success = await _fileService.AddFileMembers(fileGuid, userIds);
+
+                // 3. --- Response Handling ---
+                if (success)
+                {
+                    // Log successful operation if logger is available
+                    // _logger.LogInformation("File {FileId} shared successfully with {UserCount} users.", fileGuid, userIds.Count);
+
+                    // Return a success response (HTTP 200 OK) with a confirmation message.
+                    return Ok(new
+                    {
+                        message = "File shared successfully.",
+                        fileId = fileGuid,
+                        sharedWithCount = userIds.Count
+                    });
+                }
+                else
+                {
+                    // Log failure if the service returned false (e.g., file not found, permission issues).
+                    // _logger.LogError("Failed to share file {FileId}. The AddFileMembers service returned false.", fileGuid);
+
+                    // Return an Internal Server Error (HTTP 500) indicating a failure in the process.
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while sharing the file. Service operation failed." });
+                }
+            }
+            catch (Exception ex)
+            {
+                // --- Exception Handling ---
+                // Log the exception details for troubleshooting.
+                // Using Console.WriteLine is not ideal for production; use ILogger instead.
+                // _logger.LogError(ex, "An unexpected error occurred during file sharing for FileId {FileId}.", request.FileId);
+                Console.WriteLine($"Error in ShareFile for FileId {request.FileId}: {ex.Message}"); // Keeping original Console.WriteLine as requested not to add new code, but it's not best practice.
+
+                // Return an Internal Server Error (HTTP 500) to the client.
+                // Avoid exposing detailed exception messages directly to the client.
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred. Please try again later." });
+            }
+        }
     }
 }
