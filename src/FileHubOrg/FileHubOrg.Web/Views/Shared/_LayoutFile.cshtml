@@ -1,4 +1,11 @@
-﻿@using Microsoft.AspNetCore.Identity;
+﻿@*
+    This section of the view is responsible for the main layout structure,
+    including the sidebar and the primary content area.
+    The goal is to make the cards fill available height and enable scrolling
+    for content that exceeds the container's height.
+*@
+
+@using Microsoft.AspNetCore.Identity;
 @using FileHubOrg.Domain.Entities.User;
 @inject FileHubOrg.Application.Interfaces.ILabelService labelService;
 @inject FileHubOrg.Application.Interfaces.IDepartmentService departmentService;
@@ -12,81 +19,272 @@
     var departments = await departmentService.GetDepartmentsAsync();
 }
 
-<div class="container py-4">
-    <div class="row">
-        <!-- 🔷 Sidebar -->
-        <div class="col-12 col-lg-3 mb-4">
 
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body">
-                    <h6 class="text-muted mb-3 text-uppercase fw-bold">My Labels</h6>
-                    <div id="list-department" class="list-group list-group-flush">
+@* Add a custom CSS class for scrollable content *@
+@section Styles{
+ <style>
+        /* Ensure the main container and row use flexbox for side-by-side layout */
+        .main-content-wrapper {
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack children vertically initially */
+            min-height: 100vh; /* Ensure it takes at least full viewport height */
+        }
+        @@media (min-width: 992px) { /* Apply side-by-side layout on large screens and up */
+            .main-content-wrapper
+
+        {
+            flex-direction: row; /* Arrange children horizontally */
+        }
+
+        }
+
+        /* Sidebar specific styles */
+        .sidebar-container {
+            /* Adjust width as needed, e.g., 25% or fixed width */
+            /* Use Bootstrap's column classes for responsiveness */
+            display: flex; /* Make sidebar a flex container */
+            flex-direction: column; /* Stack sidebar cards vertically */
+            height: 100%; /* Occupy full height of its parent */
+        }
+        @@media (max-width: 991px) { /* On screens smaller than lg, sidebar takes full width */
+            .sidebar-container
+
+        {
+            margin-bottom: 20px; /* Add space below sidebar when stacked */
+        }
+
+        }
+
+        .sidebar-card {
+            height: 100%; /* Each card inside sidebar takes full height */
+            display: flex; /* Make card a flex container */
+            flex-direction: column; /* Stack card content vertically */
+        }
+
+            .sidebar-card .card-body {
+                flex-grow: 1; /* Allow card body to fill available space */
+                overflow-y: auto; /* Enable scrolling for content within sidebar cards */
+                padding: 1rem;
+            }
+        /* Styles for list items in sidebar */
+        .list-group-flush .list-group-item-action {
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+
+            .list-group-flush .list-group-item-action:hover {
+                background-color: #f8f9fa;
+                color: #0a58ca;
+            }
+
+            .list-group-flush .list-group-item-action.active {
+                background-color: #e9ecef;
+                color: #000;
+                font-weight: 500;
+            }
+
+        /* Main Content specific styles */
+        .main-content-container {
+            display: flex; /* Make main content area a flex container */
+            flex-direction: column; /* Stack its children vertically */
+            height: 100%; /* Occupy full height of its parent */
+            overflow: hidden; /* Prevent content from overflowing the container */
+        }
+
+        .main-content-card {
+            display: flex; /* Make the main card a flex container */
+            flex-direction: column;
+            height: 100%; /* Ensure card fills its column */
+        }
+
+            .main-content-card .card-body {
+                flex-grow: 1; /* Allow card body to grow */
+                overflow-y: auto; /* Enable scrolling within the main content area */
+            }
+
+        /* General table styles */
+        #tblMyFiles td {
+            vertical-align: middle;
+        }
+
+        #tblMyFiles .fa-2x {
+            font-size: 1.8rem;
+        }
+
+        .text-truncate.filename {
+            max-width: 250px;
+        }
+
+        .text-truncate.description {
+            max-width: 300px;
+        }
+
+        /* Styles for modals */
+        .modal-dialog { /* Adjust modal sizing if needed */
+        }
+
+        .modal-dialog-centered {
+            justify-content: center;
+        }
+
+        .modal-content {
+            border-radius: 0.75rem;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+        }
+
+        .modal-header .btn-close {
+            margin: 0;
+        }
+        /* Remove default margin from btn-close */
+        .modal-footer .btn {
+            border-radius: 1.5rem;
+        }
+        /* Rounded buttons in modal footer */
+ </style>
+
+    @await RenderSectionAsync("StylesChild", required: false)
+}
+
+
+@* We are inside the MainContent section, so no need for container py-4 here. *@
+@* The main layout (_LayoutFile.cshtml) already provides the container. *@
+
+@* Use the new classes to structure the layout *@
+<div class="main-content-wrapper">
+    @* This wrapper will manage the side-by-side layout *@
+
+    @* 🔷 Sidebar Column *@
+    <div class="col-12 col-lg-3 sidebar-container mb-4 mb-lg-0">
+        @* Apply sidebar container classes *@
+
+        @* Labels Section Card *@
+        <div class="card sidebar-card border-0 shadow-sm rounded-4 mb-4 h-100">
+            <div class="card-body scrollable-content">
+                @* card-body is scrollable *@
+                <h6 class="text-muted mb-3 text-uppercase fw-bold">My Labels</h6>
+                <div id="list-labels" class="list-group list-group-flush">
+                    @if (userLabels != null && userLabels.Any())
+                    {
                         @foreach (var label in userLabels)
                         {
-                            <a asp-controller="File" asp-action="Index" asp-route-id="@label.Id" class="list-group-item list-group-item-action py-2">
+                            <a asp-controller="File" asp-action="Index" asp-route-id="@label.Id"
+                               class="list-group-item list-group-item-action py-2 @(ViewContext.RouteData.Values["id"]?.ToString() == label.Id.ToString() ? "active" : "")">
                                 <i class="fa fa-tag me-2 text-danger"></i> @label.Name
                             </a>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted fst-italic">No labels created yet.</div>
+                    }
                 </div>
             </div>
+        </div>
 
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body">
-                    <h6 class="text-muted mb-3 text-uppercase fw-bold">Departments</h6>
-                    <div id="list-department" class="list-group list-group-flush">
+        @* Departments Section Card *@
+        <div class="card sidebar-card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body scrollable-content">
+                @* card-body is scrollable *@
+                <h6 class="text-muted mb-3 text-uppercase fw-bold">Departments</h6>
+                <div id="list-departments" class="list-group list-group-flush">
+                    @if (departments != null && departments.Any())
+                    {
                         @foreach (var department in departments)
                         {
-                            <a asp-controller="Department" asp-action="Users" asp-route-id="@department.Id" class="list-group-item list-group-item-action py-2">
+                            <a asp-controller="Department" asp-action="Users" asp-route-id="@department.Id"
+                               class="list-group-item list-group-item-action py-2 @(ViewContext.RouteData.Values["id"]?.ToString() == department.Id.ToString() ? "active" : "")">
                                 <i class="fa fa-folder me-2 text-primary"></i> @department.Name
                             </a>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted fst-italic">No departments available.</div>
+                    }
                 </div>
             </div>
-
         </div>
 
-        <!-- 🔶 Main content -->
-        <div class="col-12 col-lg-9">
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body">
-                    @RenderBody()
-                </div>
+    </div>
+
+    @* 🔶 Main Content Column *@
+    @* Takes full width on small screens (col-12) and 9 columns on large screens (col-lg-9) *@
+    <div class="col-12 col-lg-9 main-content-container flex-grow-1">
+        @* flex-grow-1 allows this column to take remaining space *@
+        @* Card to contain the main content *@
+        <div class="card main-content-card border-0 shadow-sm rounded-4 h-100">
+            @* card-body needs to allow scrolling if content is large *@
+            <div class="card-body scrollable-content">
+                @RenderBody() @* This is where the content of the specific page (like Index.cshtml) will be rendered *@
             </div>
         </div>
     </div>
 </div>
 
+
+
 @section Scripts {
+    @* Section for page-specific JavaScript. These scripts will be rendered into the main 'Scripts' section of the base layout (_Layout.cshtml or _LayoutFile.cshtml). *@
+
+    @* Include global scripts first if they are loaded in the base layout's script section *@
+    @* @await Html.PartialAsync("_GlobalScripts") *@ @* Example if you have a partial for global scripts *@
+
     <script type="text/javascript">
-                function requestDownload(fileId) {
-            fetch("/File/GenerateDownloadToken", {
+        /**
+         * Handles the file download process.
+         * It requests a download token from the server, then triggers the download
+         * by creating a hidden link element and simulating a click.
+         * @@param {string} fileId - The unique identifier of the file to be downloaded.
+         */
+        function requestDownload(fileId) {
+            // Construct the fetch request to the server endpoint for generating download tokens.
+            fetch("/File/GenerateDownloadToken", { // IMPORTANT: Ensure this URL is correct for your backend endpoint.
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    // If using AntiForgeryToken, add it here:
+                    // "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
                 },
+                // Send the fileId as a JSON payload. Note: Sending a raw string might require server-side adjustment.
+                // It's often better to send an object: body: JSON.stringify({ fileId: fileId })
                 body: JSON.stringify(fileId)
             })
-                .then(response => {
-                    if (!response.ok) throw new Error("خطا در دریافت لینک دانلود");
-                    return response.json();
-                })
-                .then(data => {
-                    // لینک رو باز کن یا دانلود رو شروع کن
+            .then(response => {
+                // Check if the HTTP request was successful.
+                if (!response.ok) {
+                    // Throw an error if the response status is not in the 200-299 range.
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                // Parse the response body as JSON.
+                return response.json();
+            })
+            .then(data => {
+                // Check if the server returned a download URL.
+                if (data.downloadUrl) {
+                    // Create a temporary anchor (link) element to trigger the download.
                     const link = document.createElement("a");
                     link.href = data.downloadUrl;
-                    link.style.display = "none";
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                })
-                .catch(error => {
-                    console.error("خطا:", error);
-                    alert("امکان دریافت فایل وجود ندارد.");
-                });
+                    link.style.display = "none"; // Hide the link element from the user.
+                    document.body.appendChild(link); // Append the link to the document body.
+                    link.click(); // Simulate a click to start the download.
+                    document.body.removeChild(link); // Clean up the temporary link element.
+                } else {
+                    // Inform the user if the server did not provide a download URL.
+                    alert("Could not generate a valid download link.");
+                }
+            })
+            .catch(error => {
+                // Handle any errors that occurred during the fetch operation (network issues, parsing errors, etc.).
+                console.error("Error during download request:", error);
+                alert("An error occurred while trying to download the file. Please try again.");
+            });
         }
 
+        // --- Other page-specific scripts can be added here ---
+        // Example: $(document).ready(function() { /* initialize something */ });
+        // If using jQuery, ensure it's loaded before this script.
+
     </script>
+
+    @* Render any additional scripts defined in child views (e.g., for modals like sharing) *@
     @await RenderSectionAsync("ScriptsChild", required: false)
 }
