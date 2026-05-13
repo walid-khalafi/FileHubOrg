@@ -1,17 +1,83 @@
 ﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+    Index.cshtml: This view displays the list of files for a specific label or the main file directory.
+    It inherits from _LayoutFile.cshtml, which provides the sidebar and main content structure.
+    This section includes layout settings, page-specific styles, and helper functions.
 *@
 @model FileHubOrg.Web.Models.FileViewModels.IndexViewModel
 @{
 
-    ViewData["Title"] = $"File Managment {Model.labelName}";
+    // Set the layout to _LayoutFile.cshtml to use its structure (sidebar + main content area).
     Layout = "_LayoutFile";
+
+    // Set the page title dynamically. Accessing Model properties like 'labelName' is assumed.
+    // If Model.labelName is null, default to "All Files".
+    ViewData["Title"] = $"File Management - {Model.labelName ?? "All Files"}";
+
 }
 
+@section StylesChild {
+
+
+
+@* Styles specific to this page (file list table, share modal elements, etc.) *@
+<style type="text/css">
+    /* Accordion styles for potential use in share modal or other features */
+    .accordion-button {
+        font-size: 1rem;
+        padding: 0.8rem 1.25rem;
+    }
+
+    .accordion-body {
+        padding-left: 3rem !important; /* Indent for user list within department */
+    }
+    /* Form check styles for alignment */
+    .form-check {
+        display: flex;
+        align-items: center;
+    }
+
+    .form-check-input[type="checkbox"] {
+        margin-top: 0; /* Adjust vertical alignment */
+    }
+    /* Text truncation for labels in lists */
+    .form-check-label.text-truncate {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Styles for the file list table */
+    #tblMyFiles td {
+        vertical-align: middle; /* Vertically align content in table cells */
+    }
+
+    #tblMyFiles .fa-2x {
+        font-size: 1.8rem; /* Increase size of file type icons */
+    }
+    /* Specific styling for truncated text in file list columns */
+    .text-truncate.filename {
+        max-width: 250px;
+    }
+
+    .text-truncate.description {
+        max-width: 300px;
+    }
+</style>
+}
 @functions {
+    /// <summary>
+    /// Determines the appropriate Font Awesome icon class based on the file extension.
+    /// Used to visually represent different file types in the file list.
+    /// </summary>
+    /// <param name="fileName">The name of the file (including its extension).</param>
+    /// <returns>A string representing the Font Awesome icon class (e.g., "fa-file-pdf text-danger").</returns>
     public string GetFileIconClass(string fileName)
     {
+        // Get the file extension and convert it to lowercase for case-insensitive comparison.
         var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+
+        // Use a switch expression to map extensions to corresponding Font Awesome classes and colors.
         return ext switch
         {
             ".pdf" => "fa-file-pdf text-danger",
@@ -20,7 +86,7 @@
             ".jpg" or ".jpeg" or ".png" or ".gif" => "fa-file-image text-warning",
             ".zip" or ".rar" => "fa-file-archive text-muted",
             ".txt" => "fa-file-alt text-dark",
-            _ => "fa-file text-secondary"
+            _ => "fa-file text-secondary" // Default icon for any other file type
         };
     }
 }
@@ -62,287 +128,353 @@
             </a>
         </li>
         <li class="breadcrumb-item active">
-            <a href="@Url.Action("Index", "File", new {id = Model.labelId})" class="text-decoration-none"></a>
-            @Model.labelName
+            @* اگر labelId وجود دارد، لینک به آن را نمایش بده *@
+            @if (!string.IsNullOrEmpty(Model.labelId.ToString()))
+            {
+                <a href="@Url.Action("Index", "File", new { id = Model.labelId })" class="text-decoration-none">@Model.labelName</a>
+            }
+            else
+            {
+                <span>@Model.labelName</span>
+            }
         </li>
     </ol>
 </nav>
 
-@if(Model.files.Count > 0)
-{
-    <div class="row">
-        <div class="table-responsive">
-            <table id="tblMyFiles" class="table table-hover table-striped">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>FileName</th>
-                        <th>Description</th>
-                        <th>Size</th>
-                        <th>CreatedAt</th>
-                        <th>Members</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var file in Model.files)
-                    {
+@* File List Section *@
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body">
+        @if (Model.files != null && Model.files.Any())
+        {
+            <div class="table-responsive">
+                @* File table with hover and striped effects *@
+                <table id="tblMyFiles" class="table table-hover table-striped align-middle">
+                    <thead>
                         <tr>
-                            <td> <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i></td>
-                            <td>@file.OrginalName</td>
-                            <td>@file.Description</td>
-                            <td>@file.SizeKB KB</td>
-                            <td>@file.CreatedAt</td>
-                            <td></td>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" onclick="requestDownload('@file.Id')"><i class="fa fa-download me-2"></i> Download</a></li>
-                                        <li><a class="dropdown-item" onclick="openRenameModal('file.Id', 'file.FileName', false)"><i class="fa fa-edit me-2"></i> Rename</a></li>
-                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2"></i> Move</a></li>
-                                        <li><a class="dropdown-item" onclick="openItemModal({ id: 'file.Id', name: 'file.FileName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2"></i> Copy</a></li>
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item text-danger" onclick="deleteItem('file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
-                                    </ul>
-                                </div>
-                            </td>
+                            <th scope="col"></th> @* Icon column *@
+                            <th scope="col">File Name</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Size</th>
+                            <th scope="col">Created At</th>
+                            <th scope="col">Members</th> @* Placeholder column, if needed later *@
+                            <th scope="col">Actions</th>
                         </tr>
-                    }
-
-                </tbody>
-            </table>
-
-        </div>
-      
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model.files)
+                        {
+                            <tr>
+                                @* File icon based on type *@
+                                <td class="text-center"><i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i></td>
+                                @* File Name *@
+                                <td class="text-truncate filename" style="max-width: 250px;">@file.OrginalName</td> @* Increased max-width for filename *@
+                                @* File Description *@
+                                <td class="text-truncate description" style="max-width: 300px;">@file.Description</td> @* Increased max-width for description *@
+                                @* File Size (assuming SizeKB is available) *@
+                                <td>@file.SizeKB KB</td>
+                                @* File Creation Date (formatted) *@
+                                <td>@file.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                @* Members column - currently empty *@
+                                <td></td>
+                                @* Action buttons using dropdown *@
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fa fa-ellipsis-v"></i> Options
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            @* Download Link *@
+                                            <li><a class="dropdown-item" onclick="requestDownload('@file.Id')"><i class="fa fa-download me-2 text-success"></i> Download</a></li>
+                                            @* Share File Link - opens modal *@
+                                            <li><a class="dropdown-item" onclick="openShareModal('@file.Id')"><i class="fa fa-share me-2 text-info"></i> Share File</a></li>
+                                            @* Move/Copy Links - Assuming openItemModal is defined elsewhere *@
+                                            <li><a class="dropdown-item" onclick="openItemModal({ id: '@file.Id', name: '@file.OrginalName', isFolder: false }, 'move')"><i class="fa fa-arrows-alt me-2 text-warning"></i> Move</a></li>
+                                            <li><a class="dropdown-item" onclick="openItemModal({ id: '@file.Id', name: '@file.OrginalName', isFolder: false }, 'copy')"><i class="fa fa-clone me-2 text-muted"></i> Copy</a></li>
+                                            <li><hr class="dropdown-divider" /></li>
+                                            @* Delete Link - Includes confirmation (assuming deleteItem handles it) *@
+                                            <li><a class="dropdown-item text-danger" onclick="deleteItem('@file.Id', false)"><i class="fa fa-trash me-2"></i> Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            @* Message shown when the label/folder is empty *@
+            <div class="alert alert-light border text-muted text-center p-4 mt-4 rounded-3">
+                <i class="fa fa-folder-open me-2 fs-4 text-warning"></i> This label is empty. Add some files or labels!
+            </div>
+        }
     </div>
-}
-else
-{
-    <div class="alert alert-light border text-muted text-center p-4 mt-4">
-        <i class="fa fa-folder-open me-2 fs-4 text-warning"></i> This label is empty.
-    </div>
-
-}
+</div>
 
 
 
 
 
+
+@* Modals Section - These are defined within the page as they are specific to this view's functionality *@
+
+@* Modal for Creating a New Label *@
 <div class="modal fade" id="createLabelModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form asp-action="CreateLabel" method="post" class="modal-content">
-            @Html.AntiForgeryToken()
+        <form asp-action="CreateLabel" method="post" class="modal-content rounded-4 shadow-sm">
+            @Html.AntiForgeryToken() @* Security token for form posting *@
             <div class="modal-header">
-                <h5 class="modal-title" id="createLabelModalLabel">Create New Label</h5>
+                <h5 class="modal-title" id="createLabelModalLabel"><i class="fa fa-tag me-2"></i> Create New Label</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                @* Hidden input for parentId if creating nested labels is supported *@
                 <input type="hidden" name="parentId" value="" />
-                <input type="text" name="Name" class="form-control" placeholder="Label Name ..." required />
+                <label for="labelName" class="form-label">Label Name</label>
+                <input type="text" id="labelName" name="Name" class="form-control form-control-lg" placeholder="Enter label name..." required />
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary rounded-pill px-3">Create</button>
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="modal fade" id="uploadFileModal" tabindex="-1" aria-labelledby="createLabelModalLabel" aria-hidden="true">
+@* Modal for Uploading a File *@
+<div class="modal fade" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form asp-action="UploadFile" method="post" enctype="multipart/form-data" class="modal-content">
-            @Html.AntiForgeryToken()
+        <form asp-action="UploadFile" method="post" enctype="multipart/form-data" class="modal-content rounded-4 shadow-sm">
+            @Html.AntiForgeryToken() @* Security token *@
             <div class="modal-header">
-                <h5 class="modal-title" id="createFolderModalLabel">Upload Files</h5>
+                <h5 class="modal-title" id="uploadFileModalLabel"><i class="fa fa-upload me-2"></i> Upload Files</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <input type="file" name="file" class="form-control" required />
+                @* File input field *@
+                <input type="file" name="file" class="form-control form-control-lg" required />
+                @* Hidden input to associate the upload with the current label/folder *@
                 <input type="hidden" name="labelId" value="@Model.labelId" />
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Upload</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary rounded-pill px-3">Upload</button>
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- 🔧 Modal for Rename -->
-<div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="renameForm" method="post" asp-controller="File" asp-action="Rename">
+@* Modal for Sharing a File *@
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        @* Center the modal *@
+        <div class="modal-content rounded-4 shadow-sm">
+            @* Form for sharing - submission handled by JavaScript *@
+            <form id="shareForm" method="post">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="renameModalLabel">✏️ Rename</h5>
+                    <h5 class="modal-title" id="shareModalLabel"><i class="fa fa-share-alt me-2 text-info"></i> Share File</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="rename-id" name="Id" />
-                    <input type="hidden" id="rename-isFolder" name="IsFolder" />
+                    @* Hidden input to store the ID of the file being shared *@
+                    <input type="hidden" id="sharefileId" name="Id" />
 
-                    <div class="mb-3">
-                        <label for="rename-newName" class="form-label">New Name</label>
-                        <input type="text" class="form-control" id="rename-newName" name="NewName" required />
+                    @* This div will be populated with the department and user list via AJAX *@
+                    <div id="shareContaner" class="accordion" role="tablist">
+                        <!-- Departments and Users will load here -->
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    @* Submit button that triggers the JavaScript function *@
+                    <button type="submit" class="btn btn-primary rounded-pill px-3" onclick="return submitShareForm()">Share</button>
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- 🔁 Move Item Modal (Redesigned) -->
-<div class="modal fade" id="moveModal" tabindex="-1" aria-labelledby="moveModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content rounded-4 shadow-sm">
-            <form id="moveForm" method="post" asp-controller="File" asp-action="Move">
-                <div class="modal-header bg-light border-0 pb-0">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-folder-open text-warning fs-4"></i>
-                        <h5 class="modal-title fw-bold mb-0" id="moveModalLabel">
-                            Move <span id="move-itemName" class="text-primary"></span>
-                        </h5>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
 
-                <div class="modal-body pt-2">
-                    <input type="hidden" id="move-id" name="ItemId" />
-                    <input type="hidden" id="move-isFolder" name="IsFolder" />
-                    <input type="hidden" id="move-targetParentId" name="TargetParentId" />
 
-                    <div class="mb-3">
-                        <label for="move-targetParentId" class="form-label fw-semibold">📁  Select Destinition</label>
-                        <div class="border rounded p-3 bg-light">
-                            <ul class="list-unstyled mb-0" id="folder-tree-list">
-                            </ul>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="modal-footer border-0">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="fas fa-arrow-right me-1"></i> Move
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<!-- 📋 Copy Item Modal (Redesigned) -->
-<div class="modal fade" id="copyModal" tabindex="-1" aria-labelledby="copyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content rounded-4 shadow-sm">
-            <form id="copyForm" method="post" asp-controller="File" asp-action="Copy">
-                <div class="modal-header bg-light border-0 pb-0">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-copy text-success fs-4"></i>
-                        <h5 class="modal-title fw-bold mb-0" id="copyModalLabel">
-                            Copy <span id="copy-itemName" class="text-success"></span>
-                        </h5>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body pt-2">
-                    <input type="hidden" id="copy-id" name="itemId" />
-                    <input type="hidden" id="copy-isFolder" name="isFolder" />
-                    <input type="hidden" id="copy-targetParentId" name="targetParentId" />
-
-                    <div class="mb-3">
-                        <label for="copy-targetParentId" class="form-label fw-semibold">📁 Select Destinition</label>
-                        <div class="border rounded p-3 bg-light">
-                            <ul class="list-unstyled mb-0" id="copy-folder-tree">
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer border-0">
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="fas fa-copy me-1"></i> Copy
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
+@*
+    This script section contains JavaScript functions for managing file sharing functionality.
+    It includes functions to open the share modal, handle user/department selection,
+    and submit the sharing information to the server.
+*@
 @section ScriptsChild {
-    <script>
+    <script type="text/javascript">
+        // --- File Sharing Modal Related Functions ---
 
+        /**
+         * Opens the share modal and initiates the loading of department and user data.
+         * This function is typically called when a user clicks a "Share" button for a file.
+         * @@param {string} fileId - The unique identifier of the file to be shared.
+         */
+        function openShareModal(id) {
+            // Set the hidden input field with the file ID to be shared.
+            document.getElementById("sharefileId").value = id;
 
-    
-        function openRenameModal(id, currentName, isFolder) {
-            document.getElementById("rename-id").value = id;
-            document.getElementById("rename-newName").value = currentName;
-            document.getElementById("rename-isFolder").value = isFolder;
+            // Initialize the Bootstrap modal instance.
+            var modal = new bootstrap.Modal(document.getElementById("shareModal"));
 
-            var modal = new bootstrap.Modal(document.getElementById("renameModal"));
-            modal.show();
-        }
+            // Construct the URL to fetch the list of departments and users for sharing.
+            // window.location.origin gets the base URL of the current site.
+            const url = new URL('/File/GetShareList', window.location.origin);
+            url.searchParams.set('fileId', id); // Add fileId as a query parameter
 
-        function openItemModal(data, type) {
-            const modalId = type === 'copy' ? 'copyModal' : 'moveModal';
-            const itemNameId = type === 'copy' ? 'copy-itemName' : 'move-itemName';
-            const targetParentId = type === 'copy' ? 'copy-targetParentId' : 'move-targetParentId';
-            const itemIdField = type === 'copy' ? 'copy-id' : 'move-id';
-            const isFolderField = type === 'copy' ? 'copy-isFolder' : 'move-isFolder';
-            const folderTreeListId = type === 'copy' ? 'copy-folder-tree' : 'folder-tree-list';
+            // Get the container where the department/user list will be loaded.
+            const shareContainer = document.getElementById("shareContaner");
+            // Display a loading indicator while data is being fetched.
+            shareContainer.innerHTML = "<div class='text-muted fst-italic p-3'>Loading Departments...</div>";
 
-            // 🔐 آیدی‌های ممنوعه برای انتخاب (دپارتمان، fff، و ...)
-            const forbiddenIds = [
-                "",  // آیدی واقعی پوشهٔ دپارتمان
-                ""
-                // می‌تونی مقادیر بیشتری اضافه کنی
-            ];
-
-            // مقداردهی فیلدهای مخفی مودال
-            document.getElementById(itemIdField).value = data.id;
-            document.getElementById(isFolderField).value = data.isFolder;
-            document.getElementById(targetParentId).value = ''; // ریست انتخاب مقصد
-
-            // نمایش نام آیتم در مودال
-            const nameSpan = document.getElementById(itemNameId);
-            nameSpan.innerText = data.name ?? '';
-
-            // 🛰️ ساخت URL و ارسال پارامترها
-            const url = new URL('/File/GetFolderTree', window.location.origin);
-            url.searchParams.set('excludeId', data.id);
-            url.searchParams.set('inputName', targetParentId);
-            url.searchParams.set('forbidden', forbiddenIds.join(','));
-
-            // نمایش لودینگ در درخت
-            const treeContainer = document.getElementById(folderTreeListId);
-            treeContainer.innerHTML = "<div class='text-muted fst-italic'>در حال بارگذاری پوشه‌ها...</div>";
-
-            // 🧭 دریافت و نمایش درخت مقصد
+            // Fetch the department and user list HTML from the server using the constructed URL.
             fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error("Server error");
+                    // Check if the network response was successful (status code 200-299).
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`); // Throw an error with status for better debugging.
+                    }
+                    // Return the response body as text (HTML).
                     return response.text();
                 })
                 .then(html => {
-                    treeContainer.innerHTML = html;
+                    // Once the HTML is received, update the container's content.
+                    shareContainer.innerHTML = html;
+                    // Set up event listeners for the newly loaded checkboxes and "select all" functionality.
+                    setupShareEventListeners();
                 })
                 .catch(err => {
-                    console.error("⛔️ خطا در دریافت درخت پوشه:", err);
-                    treeContainer.innerHTML = "<div class='text-danger'>خطا در بارگذاری پوشه‌ها</div>";
+                    // Log any errors encountered during the fetch process to the console.
+                    console.error("⛔️ Error fetching department tree:", err);
+                    // Display an error message to the user in the container.
+                    shareContainer.innerHTML = "<div class='text-danger p-3'>Error loading departments.</div>";
                 });
 
-            // نمایش مودال
-            const modal = new bootstrap.Modal(document.getElementById(modalId));
+            // Display the modal to the user.
             modal.show();
         }
 
+        /**
+         * Sets up event listeners for checkboxes related to sharing (departments and users).
+         * This function is called after the share modal's content has been loaded via AJAX.
+         */
+        function setupShareEventListeners() {
+            // --- Handle "Select All" checkboxes for departments ---
+            // Find all checkboxes with the class 'department-select-all'.
+            document.querySelectorAll('.department-select-all').forEach(checkbox => {
+                // Add an event listener for the 'change' event (when checkbox state is toggled).
+                checkbox.addEventListener('change', function() {
+                    // Get the department ID associated with this "Select All" checkbox.
+                    const departmentId = this.getAttribute('data-department-id');
+                    // Check if the checkbox is currently checked.
+                    const isChecked = this.checked;
+
+                    // Find all user checkboxes that belong to this specific department.
+                    document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]`).forEach(userCheckbox => {
+                        // Set the checked state of each user checkbox to match the "Select All" checkbox.
+                        userCheckbox.checked = isChecked;
+                    });
+                });
+            });
+
+            // --- Handle individual user checkboxes and update the parent "Select All" checkbox ---
+            // Find all individual user checkboxes.
+            document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                // Add an event listener for the 'change' event.
+                checkbox.addEventListener('change', function() {
+                    // Get the department ID for the current user checkbox.
+                    const departmentId = this.getAttribute('data-department-id');
+
+                    // Find all user checkboxes belonging to this department.
+                    const allUsersInDepartment = document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]`);
+                    // Find only the checked user checkboxes within this department.
+                    const checkedUsersInDepartment = document.querySelectorAll(`.user-checkbox[data-department-id="${departmentId}"]:checked`);
+
+                    // Find the corresponding "Select All" checkbox for this department.
+                    const selectAllCheckbox = document.getElementById(`selectAll-${departmentId}`);
+
+                    // If the "Select All" checkbox exists...
+                    if (selectAllCheckbox) {
+                        // Update its checked state: it should be checked only if all users in the department are checked.
+                        selectAllCheckbox.checked = allUsersInDepartment.length === checkedUsersInDepartment.length;
+                    }
+                });
+            });
+        }
+
+        /**
+         * Collects the IDs of all selected users and submits them to the server via Fetch API.
+         * This function is called when the user clicks the "Share" button in the modal.
+         * @@returns {boolean} Returns false to prevent the default HTML form submission.
+         */
+        function submitShareForm() {
+            const selectedUserIds = [];
+            // Iterate over all checked user checkboxes and collect their values (user IDs).
+            document.querySelectorAll('.user-checkbox:checked').forEach(checkbox => {
+                selectedUserIds.push(checkbox.value); // The 'value' attribute holds the user ID.
+            });
+
+            // Get the file ID from the hidden input field.
+            const fileId = document.getElementById('sharefileId').value;
+
+            // Log the collected data to the console for debugging purposes.
+            console.log("File ID:", fileId);
+            console.log("Selected User IDs:", selectedUserIds);
+
+            // --- Send the data to the server using Fetch API ---
+            // IMPORTANT: Ensure the URL '/File/ShareFile' points to your correct backend endpoint.
+            fetch('/File/ShareFile', {
+                method: 'POST', // Use POST method for sending data.
+                headers: {
+                    'Content-Type': 'application/json', // Specify that the request body is JSON.
+                    // If using AntiForgeryToken, uncomment and include the token:
+                    // 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                // Convert the JavaScript object containing fileId and selectedUserIds to a JSON string.
+                // It's recommended to send an object for clarity, e.g., { fileId: fileId, sharedToUserIds: selectedUserIds }
+                body: JSON.stringify({
+                    fileId: fileId,
+                    sharedToUserIds: selectedUserIds
+                })
+            })
+            .then(response => {
+                // Check if the HTTP response was successful.
+                if (!response.ok) {
+                    // If not OK, log the error and throw an exception to be caught by .catch().
+                    console.error('Error sharing file:', response.statusText);
+                    alert('Failed to share file. Please try again.');
+                    // Reject the promise to prevent further .then() execution and signal an error.
+                    return Promise.reject(`HTTP error! status: ${response.status}`);
+                }
+                // Parse the response body as JSON. Adjust if your endpoint returns text or other format.
+                return response.json();
+            })
+            .then(data => {
+                // Process the successful response from the server.
+                console.log('File shared successfully:', data);
+                alert('File shared successfully!'); // Provide user feedback.
+
+                // Close the modal after successful operation.
+                // Get the modal instance using its ID.
+                var modalElement = document.getElementById("shareModal");
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                // If the modal instance exists, hide it.
+                if (modal) {
+                    modal.hide();
+                }
+            })
+            .catch(error => {
+                // Handle any errors that occurred during the fetch or processing.
+                console.error('Error submitting share form:', error);
+                alert('An error occurred while sharing the file.');
+            });
+
+            // Prevent the default HTML form submission behavior, as we are handling it with Fetch API.
+            return false;
+        }
     </script>
+
+
 }
