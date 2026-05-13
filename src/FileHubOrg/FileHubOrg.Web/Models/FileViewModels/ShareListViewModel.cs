@@ -7,5 +7,6 @@ namespace FileHubOrg.Web.Models.FileViewModels
     {
         public Guid fileId { get; set; }
         public List<Department>  Departments { get; set; }
+        public string ErrorMessage { get; set; }
     }
 }
