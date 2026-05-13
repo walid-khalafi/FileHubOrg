@@ -1,4 +1,9 @@
-﻿@using Microsoft.AspNetCore.Identity
+﻿@*
+    _Layout.cshtml: This is the main layout file for the entire web application.
+    It defines the overall structure, including the header, footer, and navigation.
+    It also renders the content of individual pages using @RenderBody().
+*@
+@using Microsoft.AspNetCore.Identity
 @using FileHubOrg.Domain.Entities.User
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -9,23 +14,36 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - FileHubOrg.web</title>
-    <script type="importmap"></script>
+
+    @* Bootstrap CSS framework for styling *@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    @* Custom site styles *@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* Project-specific styles *@
     <link rel="stylesheet" href="~/FileHubOrg.web.styles.css" asp-append-version="true" />
+    @* Font Awesome for icons *@
     <link rel="stylesheet" href="~/lib/fontawesome-free-6.7.2-web/css/all.min.css" />
+
+    @* Allows individual pages to inject their own styles *@
     @RenderSection("Styles", required: false)
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        @* Navigation Bar *@
+        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
+                @* Brand Logo/Name *@
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">FileHubOrg.web</a>
+
+                @* Toggler for mobile view *@
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
+                @* Collapsible navigation menu *@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @* Main Navigation Links *@
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
@@ -41,21 +59,24 @@
                         </li>
                     </ul>
 
-
-                    <!-- Right nav -->
+                    @* Right-aligned Navigation (User account, Login/Logout) *@
                     <ul class="navbar-nav ms-auto">
                         @if (SignInManager.IsSignedIn(User))
                         {
+                            // Get current logged-in user
                             var currentUser = await UserManager.GetUserAsync(User);
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                    <i class="fa fa-user-circle me-1"></i> @currentUser.FullName
+                                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    @* User Icon *@
+                                    <i class="fa fa-user-circle me-1 fs-5"></i>
+                                    <span class="fw-medium">@currentUser.FullName</span>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu dropdown-menu-end mt-2">
                                     <li>
+                                        @* Logout Form Button *@
                                         <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
                                             <button type="submit" class="dropdown-item">
-                                                <i class="fa fa-sign-out text-danger me-2"></i> خروج
+                                                <i class="fa fa-sign-out text-danger me-2"></i> Logout
                                             </button>
                                         </form>
                                     </li>
@@ -64,9 +85,10 @@
                         }
                         else
                         {
+                            @* Login Link if user is not signed in *@
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Account" asp-action="Login">
-                                    <i class="fa fa-sign-in me-1"></i> ورود
+                                    <i class="fa fa-sign-in me-1"></i> Login
                                 </a>
                             </li>
                         }
@@ -75,20 +97,28 @@
             </div>
         </nav>
     </header>
+
+    @* Main content area of the page *@
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
+    @* Footer Section *@
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 1405 - FileHubOrg.web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2024 - FileHubOrg.web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+
+    @* Bootstrap and jQuery scripts *@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @* Custom site JavaScript *@
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @* Allows individual pages to inject their own scripts *@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
