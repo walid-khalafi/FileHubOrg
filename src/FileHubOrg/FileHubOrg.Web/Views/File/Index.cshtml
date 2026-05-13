@@ -143,6 +143,31 @@
         accent-color: #4f46e5;
         flex-shrink: 0;
     }
+    /* Select-all bar */
+    .share-select-all-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .55rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        background: #fafafa;
+    }
+    .share-select-all-label {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-size: .82rem;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        margin: 0;
+    }
+    .share-select-all-label input[type="checkbox"] {
+        width: 15px; height: 15px;
+        accent-color: #4f46e5;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
     /* User rows */
     .share-users-list {
         padding: .15rem 0 .15rem 1rem;
@@ -585,6 +610,15 @@
                                    oninput="filterShareList()" />
                         </div>
 
+                        <div class="share-select-all-bar" id="shareSelectAllBar" style="display:none;">
+                            <label class="share-select-all-label">
+                                <input type="checkbox" id="selectAllDepts"
+                                       onchange="toggleAllDepartments(this.checked)" />
+                                <span>Select all departments</span>
+                            </label>
+                            <span id="shareAllCount" class="share-dept-count"></span>
+                        </div>
+
                         <div id="shareContaner" class="share-list-scroll">
                             <div class="share-loading">
                                 <i class="fa fa-spinner fa-spin me-2"></i> Loading…
@@ -777,6 +811,7 @@ function openShareModal(fileId) {
     document.getElementById('sharefileId').value = fileId;
     document.getElementById('shareSearch').value = '';
     document.getElementById('shareStatusMsg').textContent = '';
+    document.getElementById('shareSelectAllBar').style.display = 'none';
     renderChips();
     updateSubmitBtn();
 
@@ -824,8 +859,21 @@ function renderShareList(data) {
     var container = document.getElementById('shareContaner');
     if (!data || data.length === 0) {
         container.innerHTML = '<div class="share-loading text-muted">No people found.</div>';
+        document.getElementById('shareSelectAllBar').style.display = 'none';
         return;
     }
+
+    // show select-all bar with total count
+    var bar = document.getElementById('shareSelectAllBar');
+    bar.style.display = '';
+    document.getElementById('shareAllCount').textContent = _shareData.length + ' people';
+
+    // sync the master checkbox
+    var allSelected = _shareData.length > 0 &&
+        _shareData.every(function(u) { return !!_selected[u.userId]; });
+    document.getElementById('selectAllDepts').checked = allSelected;
+    document.getElementById('selectAllDepts').indeterminate =
+        !allSelected && _shareData.some(function(u) { return !!_selected[u.userId]; });
 
     // group by dept
     var depts = {};
@@ -875,6 +923,30 @@ function toggleDept(deptId) {
     if (icon) icon.classList.toggle('open', !isOpen);
 }
 
+function toggleAllDepartments(checked) {
+    _shareData.forEach(function(u) {
+        var initials = u.userName.split(' ').filter(Boolean).slice(0,2)
+                        .map(function(w){ return w[0].toUpperCase(); }).join('');
+        if (checked) {
+            _selected[u.userId] = { id: u.userId, name: u.userName, initials: initials };
+        } else {
+            delete _selected[u.userId];
+        }
+    });
+    renderShareList(filterShareData());
+    renderChips();
+    updateSubmitBtn();
+    // expand all departments so the user sees the selection
+    if (checked) {
+        _shareData.forEach(function(u) {
+            var list = document.getElementById('users-' + u.deptId);
+            var icon = document.getElementById('toggle-' + u.deptId);
+            if (list) list.style.display = '';
+            if (icon) icon.classList.add('open');
+        });
+    }
+}
+
 function toggleDeptAll(deptId, checked) {
     var dept = _shareData.filter(function(u) { return u.deptId === deptId; });
     dept.forEach(function(u) {
@@ -921,6 +993,15 @@ function syncDeptCheckbox(deptId) {
     var selCount = dept.filter(function(u) { return !!_selected[u.userId]; }).length;
     var cb = document.getElementById('deptAll-' + deptId);
     if (cb) cb.checked = selCount === dept.length && dept.length > 0;
+
+    // keep master checkbox in sync too
+    var masterCb = document.getElementById('selectAllDepts');
+    if (masterCb) {
+        var allSel = _shareData.length > 0 &&
+            _shareData.every(function(u) { return !!_selected[u.userId]; });
+        masterCb.checked = allSel;
+        masterCb.indeterminate = !allSel && _shareData.some(function(u) { return !!_selected[u.userId]; });
+    }
 }
 
 function filterShareList() {
