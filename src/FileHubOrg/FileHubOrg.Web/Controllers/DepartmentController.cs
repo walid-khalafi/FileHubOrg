@@ -2,9 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using FileHubOrg.Web.Models.DepartmentViewModels;
+using Microsoft.AspNetCore.Authorization;
 namespace FileHubOrg.Web.Controllers
 {
-
+    [Authorize]
     public class DepartmentController : Controller
     {
         private readonly IDepartmentService _departmentService;
