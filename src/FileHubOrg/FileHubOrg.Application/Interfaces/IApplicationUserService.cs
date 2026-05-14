@@ -55,5 +55,39 @@ namespace FileHubOrg.Application.Interfaces
 
         /// <summary>Changes a user's department assignment.</summary>
         Task<bool> ChangeDepartmentAsync(string userId, Guid? departmentId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Sets the upload limit for a specific user.
+        /// </summary>
+        /// <param name="userId">The user identifier.</param>
+        /// <param name="uploadLimitBytes">The upload limit in bytes, or null to remove the override.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>True if the update was successful; otherwise, false.</returns>
+        Task<bool> SetUserUploadLimitAsync(string userId, long? uploadLimitBytes, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deactivates a user account, preventing them from logging in or performing operations.
+        /// </summary>
+        /// <param name="userId">The user identifier.</param>
+        /// <param name="reason">The reason for deactivation.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>True if the operation was successful; otherwise, false.</returns>
+        Task<bool> DeactivateUserAsync(string userId, string reason, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Reactivates a deactivated user account.
+        /// </summary>
+        /// <param name="userId">The user identifier.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>True if the operation was successful; otherwise, false.</returns>
+        Task<bool> ReactivateUserAsync(string userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets user statistics including upload usage information.
+        /// </summary>
+        /// <param name="userId">The user identifier.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A tuple containing (uploadedFilesCount, totalUploadedSizeInBytes, uploadLimitBytes)</returns>
+        Task<(int fileCount, long totalSizeBytes, long? limitBytes)> GetUserUploadStatsAsync(string userId, CancellationToken cancellationToken = default);
     }
 }

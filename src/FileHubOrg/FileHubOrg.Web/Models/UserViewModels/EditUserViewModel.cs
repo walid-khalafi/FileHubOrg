@@ -19,10 +19,28 @@ namespace FileHubOrg.Web.Models.UserViewModels
         [Display(Name = "Department")]
         public Guid? DepartmentId { get; set; }
 
+        [Display(Name = "Upload Limit (MB)")]
+        [Range(0, long.MaxValue, ErrorMessage = "Upload limit must be a positive number or leave empty for unlimited")]
+        public long? UploadLimitMB { get; set; }
+
+        [Display(Name = "Account Status")]
+        public bool IsActive { get; set; } = true;
+
+        [Display(Name = "Deactivation Reason")]
+        public string DeactivationReason { get; set; } = string.Empty;
+
+        [Display(Name = "Deactivated At")]
+        public DateTime? DeactivatedAt { get; set; }
+
         // Read-only display fields
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string? CurrentDepartmentName { get; set; }
+
+        // Upload statistics
+        public int UploadedFilesCount { get; set; } = 0;
+        public double TotalUploadedSizeMB { get; set; } = 0;
+        public double UploadUsagePercentage { get; set; } = 0;
 
         public IReadOnlyList<Department> Departments { get; set; } = new List<Department>();
     }

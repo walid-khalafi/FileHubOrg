@@ -4,6 +4,7 @@ using FileHubOrg.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FileHubOrg.Infrastructure.Migrations
 {
     [DbContext(typeof(FileHubOrgDbContext))]
-    partial class FileHubOrgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514221805_AddUserManagementFeatures")]
+    partial class AddUserManagementFeatures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

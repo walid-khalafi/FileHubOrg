@@ -173,5 +173,110 @@ namespace FileHubOrg.Application.Services
                 return false;
             }
         }
+
+        /// <inheritdoc />
+        public async Task<bool> SetUserUploadLimitAsync(string userId, long? uploadLimitBytes, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            if (uploadLimitBytes.HasValue && uploadLimitBytes <= 0)
+                throw new ArgumentException("Upload limit must be greater than 0.", nameof(uploadLimitBytes));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return false;
+
+            user.UploadLimitBytes = uploadLimitBytes;
+
+            try
+            {
+                await _unitOfWork.ApplicationUsers.UpdateAsync(user, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> DeactivateUserAsync(string userId, string reason, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Deactivation reason cannot be null or empty.", nameof(reason));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return false;
+
+            user.IsActive = false;
+            user.DeactivatedAt = DateTime.UtcNow;
+            user.DeactivationReason = reason.Trim();
+
+            try
+            {
+                await _unitOfWork.ApplicationUsers.UpdateAsync(user, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ReactivateUserAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return false;
+
+            user.IsActive = true;
+            user.DeactivatedAt = null;
+            user.DeactivationReason = string.Empty;
+
+            try
+            {
+                await _unitOfWork.ApplicationUsers.UpdateAsync(user, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<(int fileCount, long totalSizeBytes, long? limitBytes)> GetUserUploadStatsAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return (0, 0, null);
+
+            // Get all files created by this user
+            var userFiles = await _unitOfWork.FileMetaData.FindAsync(f => f.CreatedBy == userId, cancellationToken);
+            
+            var fileCount = userFiles.Count;
+            var totalSizeBytes = userFiles.Sum(f => f.Size);
+            var uploadLimit = user.UploadLimitBytes;
+
+            return (fileCount, totalSizeBytes, uploadLimit);
+        }
     }
 }

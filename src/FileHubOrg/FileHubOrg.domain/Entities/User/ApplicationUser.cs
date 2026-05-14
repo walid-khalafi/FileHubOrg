@@ -40,5 +40,32 @@ namespace FileHubOrg.Domain.Entities.User
 
         public Guid? DepartmentId { get;  set; }
         public virtual Department? Department { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum upload limit in bytes for this user.
+        /// If null, the system default limit applies.
+        /// </summary>
+        /// <value>The upload limit in bytes, or null for no override.</value>
+        public long? UploadLimitBytes { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the user account is active.
+        /// Deactivated accounts cannot log in or perform any operations.
+        /// </summary>
+        /// <value>True if the account is active; otherwise, false.</value>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the date and time when the user account was deactivated.
+        /// Null if the account is active or has never been deactivated.
+        /// </summary>
+        /// <value>The deactivation date, or null.</value>
+        public DateTime? DeactivatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the reason for account deactivation.
+        /// </summary>
+        /// <value>The deactivation reason, or empty string.</value>
+        public string DeactivationReason { get; set; } = string.Empty;
     }
 }

@@ -31,6 +31,37 @@
         border-radius: 8px; padding: .45rem .75rem;
         font-size: .875rem; color: #374151;
     }
+    .status-badge-active {
+        display: inline-block; padding: 0.35rem 0.75rem; border-radius: 20px;
+        background: #d1fae5; color: #065f46; font-size: 0.8rem; font-weight: 600;
+    }
+    .status-badge-inactive {
+        display: inline-block; padding: 0.35rem 0.75rem; border-radius: 20px;
+        background: #fee2e2; color: #7f1d1d; font-size: 0.8rem; font-weight: 600;
+    }
+    .upload-stats {
+        background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+        border-radius: 12px; padding: 1.5rem;
+        border-left: 4px solid #4f46e5;
+    }
+    .stat-item {
+        display: flex; justify-content: space-between;
+        padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;
+    }
+    .stat-item:last-child { border-bottom: none; }
+    .stat-label { color: #6b7280; font-size: 0.9rem; }
+    .stat-value { font-weight: 600; color: #1f2937; }
+    .progress-wrapper {
+        margin-top: 0.5rem;
+    }
+    .upload-limit-bar {
+        height: 24px; border-radius: 8px; background: #e5e7eb; overflow: hidden;
+    }
+    .upload-limit-fill {
+        height: 100%; background: linear-gradient(90deg, #10b981, #4f46e5);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 0.75rem; font-weight: 600;
+    }
 </style>
 
 @* ── Breadcrumb ── *@
@@ -48,9 +79,12 @@
 @* ── Page header ── *@
 <div class="d-flex align-items-center gap-3 mb-4">
     <div class="edit-avatar">@Initials($"{Model.FirstName} {Model.LastName}")</div>
-    <div>
+    <div class="flex-grow-1">
         <h1 class="h4 fw-bold mb-0">@Model.FirstName @Model.LastName</h1>
-        <p class="text-muted small mb-0">@Model.Email</p>
+        <p class="text-muted small mb-1">@Model.Email</p>
+        <span class="@(Model.IsActive ? "status-badge-active" : "status-badge-inactive")">
+            @(Model.IsActive ? "✓ Active" : "✕ Deactivated")
+        </span>
     </div>
 </div>
 
@@ -132,6 +166,132 @@
             </div>
         </div>
 
+        @* ── Upload Management Card ── *@
+        <div class="col-12 col-lg-6">
+            <div class="form-card">
+                <div class="card-header">
+                    <i class="fa fa-cloud-upload me-2 text-muted"></i>Upload Management
+                </div>
+                <div class="card-body">
+                    <label asp-for="UploadLimitMB" class="field-label">Upload Limit (MB)</label>
+                    <div class="input-group">
+                        <input asp-for="UploadLimitMB" type="number" class="form-control" 
+                               placeholder="Leave empty for unlimited" min="0" />
+                        <button type="button" class="btn btn-outline-primary" id="btnSetUploadLimit">
+                            <i class="fa fa-check me-1"></i>Set Limit
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fa fa-info-circle me-1"></i>Leave empty for unlimited uploads
+                    </small>
+                    <span asp-validation-for="UploadLimitMB" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        @* ── Account Status Card ── *@
+        <div class="col-12 col-lg-6">
+            <div class="form-card">
+                <div class="card-header">
+                    <i class="fa fa-lock me-2 text-muted"></i>Account Status
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <span class="@(Model.IsActive ? "status-badge-active" : "status-badge-inactive")">
+                            @(Model.IsActive ? "✓ Active" : "✕ Deactivated")
+                        </span>
+                    </div>
+
+                    @if (Model.IsActive)
+                    {
+                        <label class="field-label">Deactivation Reason</label>
+                        <textarea id="deactivationReason" class="form-control" rows="2" 
+                                  placeholder="Enter reason for deactivation..."></textarea>
+                        <button type="button" class="btn btn-danger btn-sm mt-3 w-100" id="btnDeactivate">
+                            <i class="fa fa-ban me-1"></i>Deactivate Account
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning alert-sm mb-3">
+                            <small>
+                                <i class="fa fa-warning me-1"></i>
+                                Account deactivated on <strong>@Model.DeactivatedAt?.ToString("g")</strong>
+                            </small>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.DeactivationReason))
+                        {
+                            <div class="readonly-field mb-3">
+                                <strong>Reason:</strong> @Model.DeactivationReason
+                            </div>
+                        }
+                        <button type="button" class="btn btn-success btn-sm w-100" id="btnReactivate">
+                            <i class="fa fa-check me-1"></i>Reactivate Account
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* ── Upload Statistics Card ── *@
+        <div class="col-12">
+            <div class="upload-stats">
+                <div class="mb-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa fa-chart-bar me-2 text-primary"></i>Upload Statistics
+                    </h6>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-item">
+                            <span class="stat-label">Files Uploaded</span>
+                            <span class="stat-value" id="statFilesCount">@Model.UploadedFilesCount</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Size</span>
+                            <span class="stat-value" id="statTotalSize">@Math.Round(Model.TotalUploadedSizeMB, 2) MB</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-item">
+                            <span class="stat-label">Upload Limit</span>
+                            <span class="stat-value" id="statUploadLimit">
+                                @(Model.UploadLimitMB.HasValue ? $"{Model.UploadLimitMB} MB" : "Unlimited")
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-item">
+                            <span class="stat-label">Usage</span>
+                            <span class="stat-value" id="statUsagePercentage">@Math.Round(Model.UploadUsagePercentage, 2)%</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.UploadLimitMB.HasValue && Model.UploadLimitMB > 0)
+                {
+                    <div class="progress-wrapper mt-3">
+                        <small class="text-muted d-block mb-2">Upload Usage Progress</small>
+                        <div class="upload-limit-bar">
+                            <div class="upload-limit-fill" id="usageBar" 
+                                 style="width: @Math.Min(Model.UploadUsagePercentage, 100)%">
+                                @if (Model.UploadUsagePercentage > 10)
+                                {
+                                    <text>@Math.Round(Model.UploadUsagePercentage, 0)%</text>
+                                }
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-1" id="usageText">
+                            @Math.Round(Model.TotalUploadedSizeMB, 2) MB / @Model.UploadLimitMB MB used
+                        </small>
+                    </div>
+                }
+            </div>
+        </div>
+
         @* ── Actions ── *@
         <div class="col-12 d-flex gap-2 justify-content-end">
             <a asp-action="Index" class="btn btn-secondary rounded-pill px-4">Cancel</a>
@@ -145,4 +305,135 @@
 
 @section ScriptsChild {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        const userId = '@Model.UserId';
+
+        // Set Upload Limit
+        document.getElementById('btnSetUploadLimit').addEventListener('click', function() {
+            const limitMB = document.querySelector('input[name="UploadLimitMB"]').value;
+
+            if (limitMB && limitMB <= 0) {
+                alert('Upload limit must be greater than 0');
+                return;
+            }
+
+            const data = {
+                userId: userId,
+                uploadLimitMB: limitMB ? parseInt(limitMB) : null
+            };
+
+            fetch('/User/SetUploadLimit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadUploadStats();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update upload limit');
+            });
+        });
+
+        // Deactivate Account
+        document.getElementById('btnDeactivate').addEventListener('click', function() {
+            const reason = document.getElementById('deactivationReason').value;
+
+            if (!reason.trim()) {
+                alert('Please provide a reason for deactivation');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to deactivate this account?')) {
+                return;
+            }
+
+            const data = {
+                userId: userId,
+                reason: reason
+            };
+
+            fetch('/User/DeactivateAccount', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to deactivate account');
+            });
+        });
+
+        // Reactivate Account
+        document.getElementById('btnReactivate').addEventListener('click', function() {
+            if (!confirm('Are you sure you want to reactivate this account?')) {
+                return;
+            }
+
+            const data = { userId: userId };
+
+            fetch('/User/ReactivateAccount', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to reactivate account');
+            });
+        });
+
+        // Load Upload Stats
+        function loadUploadStats() {
+            fetch(`/User/GetUploadStats/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('statFilesCount').textContent = data.fileCount;
+                    document.getElementById('statTotalSize').textContent = data.usageMB + ' MB';
+                    document.getElementById('statUploadLimit').textContent = 
+                        data.isUnlimited ? 'Unlimited' : data.limitMB + ' MB';
+                    document.getElementById('statUsagePercentage').textContent = data.usagePercentage + '%';
+
+                    if (!data.isUnlimited) {
+                        const usageBar = document.getElementById('usageBar');
+                        if (usageBar) {
+                            usageBar.style.width = Math.min(data.usagePercentage, 100) + '%';
+                            usageBar.textContent = Math.round(data.usagePercentage) + '%';
+                        }
+                        const usageText = document.getElementById('usageText');
+                        if (usageText) {
+                            usageText.textContent = `${data.usageMB} MB / ${data.limitMB} MB used`;
+                        }
+                    }
+                })
+                .catch(error => console.error('Error loading stats:', error));
+        }
+
+        // Reload stats on page load
+        window.addEventListener('load', loadUploadStats);
+    </script>
 }
+
