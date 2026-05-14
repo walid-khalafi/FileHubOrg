@@ -100,6 +100,26 @@ namespace FileHubOrg.Application.Services
             throw new NotImplementedException();
         }
 
+        public async Task<bool> RemoveFileMember(Guid fileId, string userId)
+        {
+            try
+            {
+                var member = await _unitOfWork.FileMembers
+                    .GetFirstOrDefaultAsync(x => x.FileMetadataId == fileId && x.AssignedToId == userId);
+
+                if (member == null) return false;
+
+                await _unitOfWork.FileMembers.RemoveAsync(member);
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error removing file member: {ex.Message}");
+                return false;
+            }
+        }
+
         public Task<string> GenerateDownloadTokenAsync(Guid fileId, string userId)
         {
             throw new NotImplementedException();

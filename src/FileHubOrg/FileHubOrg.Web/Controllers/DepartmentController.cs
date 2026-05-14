@@ -28,17 +28,22 @@ namespace FileHubOrg.Web.Controllers
 
         public async Task<IActionResult> Users(Guid id)
         {
-            var model = new DepartmentUsersViewModel() { Users = new List<Domain.Entities.User.ApplicationUser>() };
             if (id == Guid.Empty)
-            {
                 return BadRequest();
-            }
+
+            var department = await _departmentService.GetDepartmentsByIdAsync(id);
+            if (department == null)
+                return NotFound();
 
             var users = await _departmentService.GetDepartmentUsersAsync(id);
-            if (users !=null)
+
+            var model = new DepartmentUsersViewModel
             {
-                model.Users = users;
-            }
+                DepartmentId   = id,
+                DepartmentName = department.Name,
+                Users          = users ?? new List<Domain.Entities.User.ApplicationUser>()
+            };
+
             return View(model);
         }
     }

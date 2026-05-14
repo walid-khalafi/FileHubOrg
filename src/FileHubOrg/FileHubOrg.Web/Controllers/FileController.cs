@@ -303,6 +303,47 @@ namespace FileHubOrg.Web.Controllers
             }
         }
 
+        /// <summary>Returns the current member list for a file (owner only).</summary>
+        [HttpGet]
+        public async Task<IActionResult> GetFileMembers(Guid fileId)
+        {
+            if (fileId == Guid.Empty) return BadRequest();
+
+            var file = await _fileService.GetFileAsync(fileId);
+            if (file == null) return NotFound();
+            if (!file.CreatedBy.Equals(GetUserId())) return Forbid();
+
+            var members = await _fileService.GetFileMembersAsync(GetUserId(), fileId);
+
+            var result = members.Select(m => new
+            {
+                userId   = m.AssignedToId,
+                fullName = m.AssignedTo?.FullName ?? m.AssignedToId,
+                email    = m.AssignedTo?.Email ?? string.Empty,
+                addedAt  = m.CreatedAt.ToString("yyyy-MM-dd")
+            });
+
+            return Ok(result);
+        }
+
+        /// <summary>Removes a single member from a file (owner only).</summary>
+        [HttpPost]
+        public async Task<IActionResult> RemoveFileMember([FromBody] RemoveFileMemberRequest request)
+        {
+            if (request == null || request.FileId == Guid.Empty || string.IsNullOrWhiteSpace(request.UserId))
+                return BadRequest();
+
+            var file = await _fileService.GetFileAsync(request.FileId);
+            if (file == null) return NotFound();
+            if (!file.CreatedBy.Equals(GetUserId())) return Forbid();
+
+            var success = await _fileService.RemoveFileMember(request.FileId, request.UserId);
+            if (!success)
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to remove member." });
+
+            return Ok(new { message = "Member removed." });
+        }
+
         [HttpPost]
         public async Task<IActionResult> DeleteFile([FromBody] Guid fileId)
         {
@@ -407,5 +448,11 @@ namespace FileHubOrg.Web.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred. Please try again later." });
             }
         }
+    }
+
+    public class RemoveFileMemberRequest
+    {
+        public Guid FileId { get; set; }
+        public string UserId { get; set; } = string.Empty;
     }
 }

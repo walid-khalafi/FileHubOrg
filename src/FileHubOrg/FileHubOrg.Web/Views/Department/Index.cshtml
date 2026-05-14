@@ -1,37 +1,101 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@model FileHubOrg.Web.Models.DepartmentViewModels.IndexViewModel
+﻿@model FileHubOrg.Web.Models.DepartmentViewModels.IndexViewModel
 @{
     Layout = "_LayoutFile";
     ViewData["Title"] = "Departments";
-    int index = 0;
+
+    var palette = new[] {
+        ("#ede9fe","#4f46e5"), ("#dcfce7","#16a34a"), ("#fef3c7","#d97706"),
+        ("#fee2e2","#dc2626"), ("#e0f2fe","#0284c7"), ("#fce7f3","#db2777")
+    };
 }
 
-<div class="container py-4">
-    <div class="row">
-        <h3>Departments</h3>
-        <hr />
-        <table class="table table-responsive table-hover table-striped">
-            <thead>
-                <tr>
-                    <th width="50">#</th>
-                    <th>Department Name</th>
-                 
-                    <th width="100">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach(var department in Model.Departments)
-                {
-                    index++;
-                    <tr>
-                        <td>@index</td>
-                        <td>@department.Name</td>
-                        <td><a asp-action="Users" asp-route-id="@department.Id" class="btn btn-sm btn-primary"><i class="fa fa-arrow-alt-circle-right text-white"></i></a></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+<style>
+    .dept-card {
+        background: #fff; border: 1px solid #f3f4f6; border-radius: 14px;
+        padding: 1.3rem 1.2rem;
+        display: flex; flex-direction: column; gap: .75rem;
+        transition: transform .15s, box-shadow .15s, border-color .15s;
+        text-decoration: none; color: inherit; height: 100%;
+    }
+    .dept-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,.09);
+        border-color: #e0e7ff;
+    }
+    .dept-card-icon {
+        width: 44px; height: 44px; border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .dept-card-name {
+        font-size: .95rem; font-weight: 700; color: #111827;
+    }
+    .dept-card-meta {
+        font-size: .75rem; color: #9ca3af;
+    }
+    .dept-card-footer {
+        margin-top: auto;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .empty-state {
+        text-align: center; padding: 4rem 1rem; color: #9ca3af;
+    }
+</style>
+
+@* ── Header ── *@
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+        <div style="width:44px;height:44px;border-radius:11px;background:#ede9fe;
+                    display:flex;align-items:center;justify-content:center;color:#4f46e5;font-size:1.2rem;">
+            <i class="fa fa-sitemap"></i>
+        </div>
+        <div>
+            <h1 class="h4 fw-bold mb-0">Departments</h1>
+            <p class="text-muted small mb-0">@Model.Departments.Count department@(Model.Departments.Count != 1 ? "s" : "")</p>
+        </div>
     </div>
 </div>
+
+@* ── Department grid ── *@
+@if (Model.Departments.Any())
+{
+    <div class="row g-3">
+        @for (int i = 0; i < Model.Departments.Count; i++)
+        {
+            var dept = Model.Departments[i];
+            var (bg, fg) = palette[i % palette.Length];
+            var memberCount = dept.Members?.Count ?? 0;
+
+            <div class="col-12 col-sm-6 col-lg-4">
+                <a asp-action="Users" asp-route-id="@dept.Id" class="dept-card">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="dept-card-icon" style="background:@bg; color:@fg;">
+                            <i class="fa fa-users"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="dept-card-name text-truncate">@dept.Name</div>
+                            <div class="dept-card-meta">
+                                <i class="fa fa-user me-1"></i>
+                                @memberCount member@(memberCount != 1 ? "s" : "")
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dept-card-footer">
+                        <span class="text-muted small">View members</span>
+                        <span style="color:@fg; font-size:.8rem;">
+                            <i class="fa fa-arrow-right"></i>
+                        </span>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fa fa-sitemap fa-3x mb-3 d-block" style="opacity:.2;"></i>
+        <p class="fw-semibold mb-1">No departments yet</p>
+        <p class="small">No departments have been created.</p>
+    </div>
+}

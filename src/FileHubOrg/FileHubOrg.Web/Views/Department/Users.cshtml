@@ -1,39 +1,197 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@model FileHubOrg.Web.Models.DepartmentViewModels.DepartmentUsersViewModel
+﻿@model FileHubOrg.Web.Models.DepartmentViewModels.DepartmentUsersViewModel
 @{
     Layout = "_LayoutFile";
-    ViewData["Title"] = "Department's Users";
-    int index = 0;
+    ViewData["Title"] = $"{Model.DepartmentName} — Members";
+
+    string Initials(string name) => string.Concat(
+        name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2).Select(w => w[0].ToString().ToUpper()));
+
+    // avatar palette — cycles through a set of colours by index
+    var palette = new[] {
+        ("#ede9fe","#4f46e5"), ("#dcfce7","#16a34a"), ("#fef3c7","#d97706"),
+        ("#fee2e2","#dc2626"), ("#e0f2fe","#0284c7"), ("#fce7f3","#db2777")
+    };
 }
 
+<style>
+    /* ── Page header ── */
+    .dept-header {
+        display: flex; align-items: center; gap: 1rem;
+        margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .dept-header-icon {
+        width: 48px; height: 48px; border-radius: 13px;
+        background: #ede9fe; color: #4f46e5;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; flex-shrink: 0;
+    }
+    .dept-header-title { font-size: 1.35rem; font-weight: 700; margin: 0; }
+    .dept-header-sub   { font-size: .82rem; color: #9ca3af; margin: 0; }
 
-<div class="container py-4">
-    <div class="row">
-        <h3>Users</h3>
-        <hr />
-        <table class="table table-responsive table-hover table-striped">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Full Name</th>
-                    <th>Phone Number</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in Model.Users)
-                {
-                    index++;
-                    <tr>
-                        <td>@index</td>
-                        <td><i class="fa fa-user-circle me-1"></i> @user.FullName</td>
-                        <td>@user.PhoneNumber</td>
-                        <td><a asp-controller="File" asp-action="UserSharedFiles" asp-route-id="@user.Id" class="btn btn-sm btn-primary"><i class="fa fa-arrow-alt-circle-right text-white"></i></a></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    /* ── Search bar ── */
+    .member-search-wrap {
+        position: relative; width: 240px;
+    }
+    .member-search-wrap .fa-search {
+        position: absolute; left: .75rem; top: 50%;
+        transform: translateY(-50%); color: #9ca3af; font-size: .8rem;
+        pointer-events: none;
+    }
+    .member-search-wrap input {
+        padding-left: 2rem; border-radius: 8px;
+        border: 1.5px solid #e9ecef; font-size: .875rem;
+        background: #f9fafb; transition: border-color .15s;
+    }
+    .member-search-wrap input:focus {
+        border-color: #4f46e5; background: #fff; outline: none;
+        box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+    }
+
+    /* ── Member card ── */
+    .member-card {
+        background: #fff; border: 1px solid #f3f4f6;
+        border-radius: 14px; padding: 1.25rem 1.1rem;
+        display: flex; flex-direction: column; align-items: center;
+        text-align: center; gap: .6rem;
+        transition: transform .15s, box-shadow .15s, border-color .15s;
+        text-decoration: none; color: inherit;
+    }
+    .member-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,.09);
+        border-color: #e0e7ff;
+    }
+    .member-avatar {
+        width: 56px; height: 56px; border-radius: 50%;
+        font-size: 1.15rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .member-name {
+        font-size: .9rem; font-weight: 600; color: #111827;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 140px;
+    }
+    .member-email {
+        font-size: .72rem; color: #9ca3af;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 150px;
+    }
+    .member-phone {
+        font-size: .75rem; color: #6b7280;
+    }
+    .member-action {
+        margin-top: .25rem;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center; padding: 4rem 1rem; color: #9ca3af;
+    }
+
+    /* ── No-results msg ── */
+    #noMembersMsg { display: none; }
+</style>
+
+@* ── Page header ── *@
+<div class="dept-header">
+    <div class="dept-header-icon">
+        <i class="fa fa-users"></i>
+    </div>
+    <div>
+        <h1 class="dept-header-title">@Model.DepartmentName</h1>
+        <p class="dept-header-sub">
+            <i class="fa fa-user me-1"></i>
+            @Model.Users.Count member@(Model.Users.Count != 1 ? "s" : "")
+        </p>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+        @* Search *@
+        <div class="member-search-wrap">
+            <i class="fa fa-search"></i>
+            <input type="text" id="memberSearch" class="form-control form-control-sm"
+                   placeholder="Search members…" oninput="filterMembers()" />
+        </div>
+        @* Back *@
+        <a asp-controller="Department" asp-action="Index"
+           class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="fa fa-arrow-left me-1"></i> Departments
+        </a>
     </div>
 </div>
+
+@* ── Member grid ── *@
+@if (Model.Users.Any())
+{
+    <div id="memberGrid" class="row g-3">
+        @for (int i = 0; i < Model.Users.Count; i++)
+        {
+            var user = Model.Users[i];
+            var (bg, fg) = palette[i % palette.Length];
+            var initials = Initials(user.FullName.Length > 0 ? user.FullName : user.Email ?? "?");
+
+            <div class="col-6 col-sm-4 col-md-3 col-xl-2 member-col"
+                 data-name="@user.FullName.ToLower()"
+                 data-email="@(user.Email?.ToLower() ?? "")">
+                <a asp-controller="File" asp-action="UserSharedFiles"
+                   asp-route-id="@user.Id"
+                   class="member-card h-100">
+                    <div class="member-avatar"
+                         style="background:@bg; color:@fg;">@initials</div>
+                    <div class="member-name" title="@user.FullName">
+                        @(user.FullName.Length > 0 ? user.FullName : "—")
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(user.Email))
+                    {
+                        <div class="member-email" title="@user.Email">@user.Email</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
+                    {
+                        <div class="member-phone">
+                            <i class="fa fa-phone me-1" style="font-size:.65rem;"></i>@user.PhoneNumber
+                        </div>
+                    }
+                    <div class="member-action">
+                        <span class="btn btn-xs rounded-pill px-3 py-1"
+                              style="background:#ede9fe; color:#4f46e5; font-size:.72rem; font-weight:600;">
+                            <i class="fa fa-folder-open me-1"></i> View Files
+                        </span>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+
+    <div id="noMembersMsg" class="empty-state">
+        <i class="fa fa-search fa-2x mb-3 d-block" style="opacity:.25;"></i>
+        No members match your search.
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fa fa-users fa-3x mb-3 d-block" style="opacity:.2;"></i>
+        <p class="fw-semibold mb-1">No members yet</p>
+        <p class="small">This department has no members assigned.</p>
+    </div>
+}
+
+@section ScriptsChild {
+<script>
+function filterMembers() {
+    var q = document.getElementById('memberSearch').value.toLowerCase().trim();
+    var cols = document.querySelectorAll('.member-col');
+    var visible = 0;
+    cols.forEach(function(col) {
+        var name  = col.dataset.name  || '';
+        var email = col.dataset.email || '';
+        var match = !q || name.includes(q) || email.includes(q);
+        col.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    var noMsg = document.getElementById('noMembersMsg');
+    if (noMsg) noMsg.style.display = visible === 0 ? '' : 'none';
+}
+</script>
+}

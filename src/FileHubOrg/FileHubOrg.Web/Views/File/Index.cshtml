@@ -313,6 +313,86 @@
         .share-selected-panel { width: 100%; border-right: none; border-top: 1px solid #f3f4f6; min-height: 140px; }
         .share-picker { border-right: none; }
     }
+
+    /* ── Tabs ── */
+    .share-tabs {
+        display: flex;
+        border-bottom: 1px solid #f3f4f6;
+        background: #fafafa;
+    }
+    .share-tab {
+        flex: 1;
+        padding: .65rem 1rem;
+        font-size: .85rem;
+        font-weight: 500;
+        color: #6b7280;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: color .15s, border-color .15s;
+        position: relative;
+    }
+    .share-tab:hover { color: #374151; }
+    .share-tab.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+        background: #fff;
+    }
+    .share-tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #4f46e5;
+        color: #fff;
+        border-radius: 20px;
+        font-size: .65rem;
+        font-weight: 700;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        margin-left: 4px;
+        vertical-align: middle;
+    }
+
+    /* ── Member list (Members tab) ── */
+    .member-list-row {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: .6rem 1rem;
+        border-bottom: 1px solid #f9fafb;
+        transition: background .1s;
+    }
+    .member-list-row:last-child { border-bottom: none; }
+    .member-list-row:hover { background: #fafafa; }
+    .member-list-avatar {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: #ede9fe;
+        color: #4f46e5;
+        font-size: .78rem;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .member-list-info { flex: 1; overflow: hidden; }
+    .member-list-name {
+        font-size: .875rem; font-weight: 600; color: #111827;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .member-list-email {
+        font-size: .72rem; color: #9ca3af;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .member-list-date { font-size: .7rem; color: #9ca3af; flex-shrink: 0; }
+    .member-remove-btn {
+        background: none; border: none; padding: .25rem .4rem;
+        color: #9ca3af; cursor: pointer; border-radius: 6px;
+        font-size: .8rem; transition: background .1s, color .1s;
+        flex-shrink: 0;
+    }
+    .member-remove-btn:hover { background: #fee2e2; color: #dc2626; }
 </style>
 }
 
@@ -599,7 +679,19 @@
             <div class="modal-body p-0">
                 <input type="hidden" id="sharefileId" />
 
-                <div class="share-layout">
+                @* ── Tabs ── *@
+                <div class="share-tabs">
+                    <button class="share-tab active" id="tabAddPeople" onclick="switchShareTab('add')">
+                        <i class="fa fa-user-plus me-1"></i> Add People
+                    </button>
+                    <button class="share-tab" id="tabMembers" onclick="switchShareTab('members')">
+                        <i class="fa fa-users me-1"></i> Members
+                        <span id="memberTabCount" class="share-tab-badge" style="display:none;"></span>
+                    </button>
+                </div>
+
+                @* ── Add People panel ── *@
+                <div id="panelAddPeople" class="share-layout">
                     @* ── Left: People picker ── *@
                     <div class="share-picker">
                         <div class="share-search-wrap">
@@ -648,6 +740,15 @@
                         </div>
                     </div>
                 </div>
+
+                @* ── Members panel ── *@
+                <div id="panelMembers" style="display:none; min-height:380px;">
+                    <div id="memberListContainer" class="share-list-scroll" style="max-height:380px;">
+                        <div class="share-loading">
+                            <i class="fa fa-spinner fa-spin me-2"></i> Loading members…
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer share-modal-footer">
@@ -655,6 +756,7 @@
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary rounded-pill px-4"
                             data-bs-dismiss="modal">Cancel</button>
+                    @* Shown on Add People tab *@
                     <button type="button" class="btn btn-primary rounded-pill px-4"
                             id="shareSubmitBtn" onclick="submitShareForm()" disabled>
                         <i class="fa fa-share me-1"></i>
@@ -812,6 +914,9 @@ function openShareModal(fileId) {
     document.getElementById('shareSearch').value = '';
     document.getElementById('shareStatusMsg').textContent = '';
     document.getElementById('shareSelectAllBar').style.display = 'none';
+    // reset to Add People tab
+    switchShareTab('add');
+    document.getElementById('memberTabCount').style.display = 'none';
     renderChips();
     updateSubmitBtn();
 
@@ -1139,6 +1244,112 @@ function escHtml(s) {
 }
 function escAttr(s) {
     return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+function switchShareTab(tab) {
+    var isAdd = tab === 'add';
+    document.getElementById('panelAddPeople').style.display = isAdd ? '' : 'none';
+    document.getElementById('panelMembers').style.display   = isAdd ? 'none' : '';
+    document.getElementById('shareSubmitBtn').style.display = isAdd ? '' : 'none';
+    document.getElementById('tabAddPeople').classList.toggle('active', isAdd);
+    document.getElementById('tabMembers').classList.toggle('active', !isAdd);
+    if (!isAdd) loadMembers();
+}
+
+// ── Members tab ───────────────────────────────────────────────
+function loadMembers() {
+    var fileId = document.getElementById('sharefileId').value;
+    var container = document.getElementById('memberListContainer');
+    container.innerHTML = '<div class="share-loading"><i class="fa fa-spinner fa-spin me-2"></i> Loading members…</div>';
+
+    fetch('/File/GetFileMembers?fileId=' + encodeURIComponent(fileId))
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function(members) {
+            renderMemberList(members);
+        })
+        .catch(function(err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-danger p-3 text-center"><i class="fa fa-exclamation-circle me-2"></i>Error loading members.</div>';
+        });
+}
+
+function renderMemberList(members) {
+    var container = document.getElementById('memberListContainer');
+    var badge = document.getElementById('memberTabCount');
+
+    if (!members || members.length === 0) {
+        container.innerHTML = '<div class="share-loading text-muted">'
+            + '<i class="fa fa-user-slash d-block mb-2" style="font-size:1.5rem;opacity:.25;"></i>'
+            + 'No one has access yet.</div>';
+        badge.style.display = 'none';
+        return;
+    }
+
+    badge.textContent = members.length;
+    badge.style.display = '';
+
+    var html = '';
+    members.forEach(function(m) {
+        var initials = m.fullName.split(' ').filter(Boolean).slice(0,2)
+                        .map(function(w){ return w[0].toUpperCase(); }).join('') || '?';
+        html += '<div class="member-list-row" id="mrow-' + escAttr(m.userId) + '">';
+        html += '<div class="member-list-avatar">' + escHtml(initials) + '</div>';
+        html += '<div class="member-list-info">';
+        html += '<div class="member-list-name">' + escHtml(m.fullName) + '</div>';
+        if (m.email) html += '<div class="member-list-email">' + escHtml(m.email) + '</div>';
+        html += '</div>';
+        html += '<span class="member-list-date">' + escHtml(m.addedAt) + '</span>';
+        html += '<button class="member-remove-btn" title="Remove access"'
+              + ' onclick="removeMember(\'' + escAttr(m.userId) + '\', \'' + escAttr(m.fullName) + '\')">'
+              + '<i class="fa fa-user-minus"></i></button>';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function removeMember(userId, userName) {
+    var fileId = document.getElementById('sharefileId').value;
+    var btn = document.querySelector('#mrow-' + CSS.escape(userId) + ' .member-remove-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>'; }
+
+    fetch('/File/RemoveFileMember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: fileId, userId: userId })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function() {
+        var row = document.getElementById('mrow-' + userId);
+        if (row) {
+            row.style.transition = 'opacity .2s';
+            row.style.opacity = '0';
+            setTimeout(function() { row.remove(); }, 200);
+        }
+        // update badge
+        var badge = document.getElementById('memberTabCount');
+        var remaining = document.querySelectorAll('.member-list-row').length - 1;
+        if (remaining <= 0) {
+            badge.style.display = 'none';
+            document.getElementById('memberListContainer').innerHTML =
+                '<div class="share-loading text-muted">'
+                + '<i class="fa fa-user-slash d-block mb-2" style="font-size:1.5rem;opacity:.25;"></i>'
+                + 'No one has access yet.</div>';
+        } else {
+            badge.textContent = remaining;
+        }
+        showToast(userName + ' removed from file access.', 'success');
+    })
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-user-minus"></i>'; }
+        showToast('Failed to remove member.', 'danger');
+    });
 }
 </script>
 }

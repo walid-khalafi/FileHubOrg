@@ -1,82 +1,279 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@model FileHubOrg.Web.Models.FileViewModels.UserSharedFiles
+﻿@model FileHubOrg.Web.Models.FileViewModels.UserSharedFiles
 @{
     Layout = "_LayoutFile";
-    ViewData["Title"] = $"User Shared Files";
-}
+    ViewData["Title"] = $"{Model.FullName} — Shared Files";
 
-@functions {
-    public string GetFileIconClass(string fileName)
+    string Initials(string name) => string.Concat(
+        name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2).Select(w => w[0].ToString().ToUpper()));
+
+    string FileIcon(string? name)
     {
-        var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+        var ext = System.IO.Path.GetExtension(name)?.ToLowerInvariant();
         return ext switch
         {
-            ".pdf" => "fa-file-pdf text-danger",
-            ".doc" or ".docx" => "fa-file-word text-primary",
-            ".xls" or ".xlsx" => "fa-file-excel text-success",
-            ".jpg" or ".jpeg" or ".png" or ".gif" => "fa-file-image text-warning",
-            ".zip" or ".rar" => "fa-file-archive text-muted",
-            ".txt" => "fa-file-alt text-dark",
-            _ => "fa-file text-secondary"
+            ".pdf"                                 => "fa-file-pdf text-danger",
+            ".doc" or ".docx"                      => "fa-file-word text-primary",
+            ".xls" or ".xlsx"                      => "fa-file-excel text-success",
+            ".jpg" or ".jpeg" or ".png" or ".gif"
+                or ".webp"                         => "fa-file-image text-warning",
+            ".zip" or ".rar" or ".7z"              => "fa-file-archive text-muted",
+            ".txt"                                 => "fa-file-alt text-dark",
+            ".mp4" or ".mov" or ".avi"             => "fa-file-video",
+            ".mp3" or ".wav"                       => "fa-file-audio text-info",
+            _                                      => "fa-file text-secondary"
         };
     }
-}
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb bg-light px-3 py-2 rounded small">
 
-        <li class="breadcrumb-item active">
-            <a href="@Url.Action("Users", "Department", new { id = Model.DepartmentId })" class="text-decoration-none">@Model.DepartmentName</a>
+    string FormatSize(long bytes)
+    {
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024)     return $"{bytes / 1_024.0:F0} KB";
+        return $"{bytes} B";
+    }
+}
+
+<style>
+    /* ── Page header ── */
+    .usf-header {
+        display: flex; align-items: center; gap: 1rem;
+        margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .usf-avatar {
+        width: 52px; height: 52px; border-radius: 50%;
+        background: #4f46e5; color: #fff;
+        font-size: 1.15rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .usf-title  { font-size: 1.25rem; font-weight: 700; margin: 0; }
+    .usf-sub    { font-size: .8rem; color: #9ca3af; margin: 0; }
+
+    /* ── Search ── */
+    .usf-search-wrap { position: relative; width: 220px; }
+    .usf-search-wrap .fa-search {
+        position: absolute; left: .7rem; top: 50%;
+        transform: translateY(-50%); color: #9ca3af; font-size: .8rem;
+        pointer-events: none;
+    }
+    .usf-search-wrap input {
+        padding-left: 2rem; border-radius: 8px;
+        border: 1.5px solid #e9ecef; font-size: .875rem;
+        background: #f9fafb; transition: border-color .15s;
+    }
+    .usf-search-wrap input:focus {
+        border-color: #4f46e5; background: #fff; outline: none;
+        box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+    }
+
+    /* ── Table ── */
+    #usfTable td { vertical-align: middle; }
+    #usfTable .file-icon { font-size: 1.4rem; width: 36px; text-align: center; }
+    .file-name-cell {
+        font-size: .875rem; font-weight: 500;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 220px;
+    }
+    .file-desc-cell {
+        font-size: .78rem; color: #9ca3af;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 200px;
+    }
+
+    /* ── Label pill ── */
+    .label-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        padding: .2rem .6rem; border-radius: 20px;
+        background: #ede9fe; color: #4f46e5;
+        font-size: .7rem; font-weight: 600; white-space: nowrap;
+    }
+
+    /* ── Download btn ── */
+    .dl-btn {
+        width: 32px; height: 32px; border-radius: 8px;
+        background: #f3f4f6; border: none; color: #374151;
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: background .12s, color .12s; cursor: pointer;
+    }
+    .dl-btn:hover { background: #dcfce7; color: #16a34a; }
+
+    /* ── Empty state ── */
+    .usf-empty {
+        text-align: center; padding: 4rem 1rem; color: #9ca3af;
+    }
+
+    /* ── No results ── */
+    #noFilesMsg { display: none; }
+
+    /* ── Toast ── */
+    #usfToastContainer {
+        position: fixed; bottom: 1.5rem; right: 1.5rem;
+        z-index: 1100; min-width: 260px;
+    }
+</style>
+
+@* ── Breadcrumb ── *@
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb bg-light px-3 py-2 rounded small mb-0">
+        <li class="breadcrumb-item">
+            <a href="@Url.Action("Index", "Department")" class="text-decoration-none">
+                <i class="fa fa-sitemap me-1"></i> Departments
+            </a>
         </li>
-        <li class="breadcrumb-item active">
-            <a href="@Url.Action("UserSharedFiles", "File", new { id = Model.userId })" class="text-decoration-none"></a>
-            @Model.FullName
+        <li class="breadcrumb-item">
+            <a href="@Url.Action("Users", "Department", new { id = Model.DepartmentId })"
+               class="text-decoration-none">@Model.DepartmentName</a>
         </li>
+        <li class="breadcrumb-item active">@Model.FullName</li>
     </ol>
 </nav>
-<div class="container">
-    <div class="row">
 
-        @if (Model.files.Count > 0)
-        {
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>File Name</th>
-                        <th>Description</th>
-                        <th>Label</th>
-                        <th>Size</th>
-                        <th>Created At</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var file in Model.files)
-                    {
-                        <tr>
-
-                            <td><i class="fa @GetFileIconClass(file.OrginalName)"></i></td>
-                            <td>@file.OrginalName</td>
-                            <td>@file.Description</td>
-                            <td>@file.Label.Name</td>
-                            <td>@file.SizeKB KB</td>
-                            <td>@file.CreatedAt</td>
-                            <td>
-                                <a class="btn btn-sm" onclick="JavaScript:requestDownload('@file.Id')"><i class="fa fa-download me-2"></i> </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <div class="alert alert-light border text-muted text-center p-4 mt-4">
-                <i class="fa fa-folder-open me-2 fs-4 text-warning"></i> This user hasn't shared any files with you yet!
-            </div>
-        }
-
+@* ── Page header ── *@
+<div class="usf-header">
+    <div class="usf-avatar">@Initials(Model.FullName)</div>
+    <div>
+        <h1 class="usf-title">@Model.FullName</h1>
+        <p class="usf-sub">
+            <i class="fa fa-sitemap me-1"></i>@Model.DepartmentName
+            &nbsp;·&nbsp;
+            <i class="fa fa-file me-1"></i>@Model.files.Count file@(Model.files.Count != 1 ? "s" : "") shared with you
+        </p>
     </div>
+
+    @if (Model.files.Count > 0)
+    {
+        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+            <div class="usf-search-wrap">
+                <i class="fa fa-search"></i>
+                <input type="text" id="usfSearch" class="form-control form-control-sm"
+                       placeholder="Search files…" oninput="filterFiles()" />
+            </div>
+            <span class="badge bg-secondary rounded-pill" id="usfCountBadge">
+                @Model.files.Count file@(Model.files.Count != 1 ? "s" : "")
+            </span>
+        </div>
+    }
 </div>
+
+@* ── File table ── *@
+@if (Model.files.Count > 0)
+{
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="usfTable" class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:48px;"></th>
+                            <th>File Name</th>
+                            <th>Description</th>
+                            <th style="width:130px;">Label</th>
+                            <th style="width:90px;">Size</th>
+                            <th style="width:140px;">Uploaded</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="usfTableBody">
+                        @foreach (var file in Model.files)
+                        {
+                            <tr data-name="@file.OrginalName?.ToLower()"
+                                data-desc="@file.Description?.ToLower()">
+                                <td class="text-center ps-3">
+                                    <i class="fa @FileIcon(file.OrginalName) file-icon"></i>
+                                </td>
+                                <td>
+                                    <span class="file-name-cell d-block"
+                                          title="@file.OrginalName">@file.OrginalName</span>
+                                </td>
+                                <td>
+                                    <span class="file-desc-cell d-block"
+                                          title="@file.Description">
+                                        @(string.IsNullOrWhiteSpace(file.Description) ? "—" : file.Description)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (file.Label != null)
+                                    {
+                                        <span class="label-pill">
+                                            <i class="fa fa-tag" style="font-size:.6rem;"></i>
+                                            @file.Label.Name
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                                <td class="text-nowrap small text-muted">@FormatSize(file.Size)</td>
+                                <td class="text-nowrap small text-muted">
+                                    @file.CreatedAt.ToString("MMM d, yyyy")
+                                </td>
+                                <td class="text-center">
+                                    <button class="dl-btn" title="Download"
+                                            onclick="requestDownload('@file.Id')">
+                                        <i class="fa fa-download" style="font-size:.8rem;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="noFilesMsg" class="usf-empty">
+                <i class="fa fa-search fa-2x mb-2 d-block" style="opacity:.25;"></i>
+                No files match your search.
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="usf-empty">
+        <i class="fa fa-folder-open fa-3x mb-3 d-block" style="opacity:.2;"></i>
+        <p class="fw-semibold mb-1">No shared files</p>
+        <p class="small">@Model.FullName hasn't shared any files with you yet.</p>
+        <a href="@Url.Action("Users", "Department", new { id = Model.DepartmentId })"
+           class="btn btn-sm btn-outline-secondary rounded-pill px-3 mt-2">
+            <i class="fa fa-arrow-left me-1"></i> Back to @Model.DepartmentName
+        </a>
+    </div>
+}
+
+<div id="usfToastContainer"></div>
+
+@section ScriptsChild {
+<script>
+function filterFiles() {
+    var q = document.getElementById('usfSearch').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('#usfTableBody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+        var name = row.dataset.name || '';
+        var desc = row.dataset.desc || '';
+        var match = !q || name.includes(q) || desc.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    var badge = document.getElementById('usfCountBadge');
+    if (badge) badge.textContent = visible + ' file' + (visible !== 1 ? 's' : '');
+    var noMsg = document.getElementById('noFilesMsg');
+    if (noMsg) noMsg.style.display = visible === 0 ? '' : 'none';
+}
+
+function showToast(message, type) {
+    type = type || 'success';
+    var icon = type === 'success' ? 'fa-check-circle text-success' : 'fa-times-circle text-danger';
+    var id = 'toast-' + Date.now();
+    var html = '<div id="' + id + '" class="toast align-items-center border-0 shadow-sm mb-2" role="alert">'
+             + '<div class="d-flex"><div class="toast-body d-flex align-items-center gap-2">'
+             + '<i class="fa ' + icon + '"></i> ' + message
+             + '</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>'
+             + '</div></div>';
+    document.getElementById('usfToastContainer').insertAdjacentHTML('beforeend', html);
+    var el = document.getElementById(id);
+    new bootstrap.Toast(el, { delay: 3500 }).show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
+</script>
+}

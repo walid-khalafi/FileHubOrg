@@ -4,6 +4,8 @@ namespace FileHubOrg.Web.Models.DepartmentViewModels
 {
     public class DepartmentUsersViewModel
     {
-        public List<ApplicationUser> Users { get; set; }
+        public Guid DepartmentId { get; set; }
+        public string DepartmentName { get; set; } = string.Empty;
+        public List<ApplicationUser> Users { get; set; } = new();
     }
 }
