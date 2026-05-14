@@ -1,0 +1,268 @@
+@model FileHubOrg.Web.Models.UserViewModels.UserListViewModel
+@{
+    Layout = "_LayoutFile";
+    ViewData["Title"] = "Manage Users";
+
+    string Initials(string name) => string.Concat(
+        name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2).Select(w => w[0].ToString().ToUpper()));
+
+    var palette = new[] {
+        ("#ede9fe","#4f46e5"), ("#dcfce7","#16a34a"), ("#fef3c7","#d97706"),
+        ("#fee2e2","#dc2626"), ("#e0f2fe","#0284c7"), ("#fce7f3","#db2777")
+    };
+}
+
+<style>
+    #userTable td { vertical-align: middle; }
+
+    .user-avatar-sm {
+        width: 36px; height: 36px; border-radius: 50%;
+        font-size: .78rem; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .dept-badge {
+        display: inline-flex; align-items: center; gap: .3rem;
+        padding: .2rem .65rem; border-radius: 20px;
+        background: #f3f4f6; color: #374151;
+        font-size: .72rem; font-weight: 600;
+    }
+    .dept-badge.none { background: #fef3c7; color: #92400e; }
+
+    /* Inline dept selector */
+    .dept-select {
+        border: 1.5px solid #e9ecef; border-radius: 8px;
+        font-size: .8rem; padding: .25rem .5rem;
+        background: #f9fafb; cursor: pointer;
+        transition: border-color .15s;
+        max-width: 180px;
+    }
+    .dept-select:focus { border-color: #4f46e5; outline: none; }
+
+    .save-dept-btn {
+        width: 28px; height: 28px; border-radius: 7px;
+        background: #dcfce7; border: none; color: #16a34a;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: .75rem; cursor: pointer; transition: background .12s;
+        flex-shrink: 0;
+    }
+    .save-dept-btn:hover { background: #bbf7d0; }
+    .save-dept-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .search-wrap { position: relative; width: 240px; }
+    .search-wrap .fa-search {
+        position: absolute; left: .7rem; top: 50%;
+        transform: translateY(-50%); color: #9ca3af; font-size: .8rem;
+        pointer-events: none;
+    }
+    .search-wrap input {
+        padding-left: 2rem; border-radius: 8px;
+        border: 1.5px solid #e9ecef; font-size: .875rem;
+        background: #f9fafb; transition: border-color .15s;
+    }
+    .search-wrap input:focus {
+        border-color: #4f46e5; background: #fff; outline: none;
+        box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+    }
+
+    #toastContainer { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; min-width: 260px; }
+</style>
+
+@* ── TempData alerts ── *@
+@if (TempData["success_msg"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 mb-3 small" role="alert">
+        <i class="fa fa-check-circle me-2"></i>@TempData["success_msg"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["error_msg"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3 small" role="alert">
+        <i class="fa fa-exclamation-circle me-2"></i>@TempData["error_msg"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* ── Header ── *@
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+        <div style="width:44px;height:44px;border-radius:11px;background:#ede9fe;
+                    display:flex;align-items:center;justify-content:center;color:#4f46e5;font-size:1.2rem;">
+            <i class="fa fa-users-cog"></i>
+        </div>
+        <div>
+            <h1 class="h4 fw-bold mb-0">Manage Users</h1>
+            <p class="text-muted small mb-0">
+                <span id="userCountBadge">@Model.Users.Count</span> user@(Model.Users.Count != 1 ? "s" : "")
+            </p>
+        </div>
+    </div>
+    <div class="search-wrap">
+        <i class="fa fa-search"></i>
+        <input type="text" id="userSearch" class="form-control form-control-sm"
+               placeholder="Search users…" oninput="filterUsers()" />
+    </div>
+</div>
+
+@* ── User table ── *@
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="userTable" class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:48px;"></th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th style="width:220px;">Department</th>
+                        <th style="width:80px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    @for (int i = 0; i < Model.Users.Count; i++)
+                    {
+                        var user = Model.Users[i];
+                        var (bg, fg) = palette[i % palette.Length];
+                        var initials = Initials(user.FullName.Length > 0 ? user.FullName : user.Email ?? "?");
+
+                        <tr data-name="@user.FullName.ToLower()"
+                            data-email="@(user.Email?.ToLower() ?? "")">
+                            <td class="ps-3">
+                                <div class="user-avatar-sm" style="background:@bg; color:@fg;">@initials</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold small">@user.FullName</div>
+                            </td>
+                            <td class="small text-muted">@user.Email</td>
+                            <td class="small text-muted">@(user.PhoneNumber ?? "—")</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select class="dept-select"
+                                            id="dept-@user.Id"
+                                            data-user-id="@user.Id"
+                                            data-original="@(user.DepartmentId?.ToString() ?? "")">
+                                        <option value="">— No department —</option>
+                                        @foreach (var dept in Model.Departments)
+                                        {
+                                            if (user.DepartmentId == dept.Id)
+                                            {
+                                                <option value="@dept.Id" selected>@dept.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@dept.Id">@dept.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button class="save-dept-btn"
+                                            id="save-@user.Id"
+                                            title="Save department"
+                                            onclick="saveDepartment('@user.Id')"
+                                            disabled>
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <a asp-action="Edit" asp-route-id="@user.Id"
+                                   class="btn btn-sm btn-light rounded-pill px-3"
+                                   title="Edit user">
+                                    <i class="fa fa-pen" style="font-size:.75rem;"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!Model.Users.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fa fa-users fa-2x mb-2 d-block" style="opacity:.2;"></i>
+                <span class="small">No users found.</span>
+            </div>
+        }
+    </div>
+</div>
+
+<div id="toastContainer"></div>
+
+@section ScriptsChild {
+<script>
+// ── Search ────────────────────────────────────────────────────
+function filterUsers() {
+    var q = document.getElementById('userSearch').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('#userTableBody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+        var name  = row.dataset.name  || '';
+        var email = row.dataset.email || '';
+        var match = !q || name.includes(q) || email.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('userCountBadge').textContent = visible;
+}
+
+// ── Enable save button when dept changes ──────────────────────
+document.querySelectorAll('.dept-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var userId  = this.getAttribute('data-user-id');
+        var saveBtn = document.getElementById('save-' + userId);
+        saveBtn.disabled = this.value === this.getAttribute('data-original');
+    });
+});
+
+// ── Save department (inline AJAX) ─────────────────────────────
+function saveDepartment(userId) {
+    var sel     = document.getElementById('dept-' + userId);
+    var saveBtn = document.getElementById('save-' + userId);
+    var deptId  = sel.value || null;
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+
+    fetch('/User/ChangeDepartment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId, departmentId: deptId })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function() {
+        sel.setAttribute('data-original', sel.value);
+        saveBtn.innerHTML = '<i class="fa fa-check"></i>';
+        showToast('Department updated successfully.');
+        setTimeout(function() { saveBtn.disabled = true; }, 1000);
+    })
+    .catch(function() {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa fa-check"></i>';
+        showToast('Failed to update department.', 'danger');
+    });
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(message, type) {
+    type = type || 'success';
+    var icon = type === 'success' ? 'fa-check-circle text-success' : 'fa-times-circle text-danger';
+    var id = 'toast-' + Date.now();
+    var html = '<div id="' + id + '" class="toast align-items-center border-0 shadow-sm mb-2" role="alert">'
+             + '<div class="d-flex"><div class="toast-body d-flex align-items-center gap-2">'
+             + '<i class="fa ' + icon + '"></i> ' + message
+             + '</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>'
+             + '</div></div>';
+    document.getElementById('toastContainer').insertAdjacentHTML('beforeend', html);
+    var el = document.getElementById(id);
+    new bootstrap.Toast(el, { delay: 3500 }).show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
+</script>
+}

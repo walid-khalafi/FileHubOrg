@@ -144,5 +144,34 @@ namespace FileHubOrg.Application.Services
                 return false;
             }
         }
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ApplicationUser>> GetAllUsersAsync(CancellationToken cancellationToken = default)
+        {
+            return await _unitOfWork.ApplicationUsers.FindAsync(_ => true, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ChangeDepartmentAsync(string userId, Guid? departmentId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null) return false;
+
+            user.DepartmentId = departmentId;
+
+            try
+            {
+                await _unitOfWork.ApplicationUsers.UpdateAsync(user, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
     }
 }

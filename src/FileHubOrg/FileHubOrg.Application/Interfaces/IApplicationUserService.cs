@@ -49,5 +49,11 @@ namespace FileHubOrg.Application.Interfaces
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>True if the update was successful; otherwise, false.</returns>
         Task<bool> SetTwoFactorEnabledAsync(string userId, bool enabled, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets all users in the system.</summary>
+        Task<IReadOnlyList<ApplicationUser>> GetAllUsersAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Changes a user's department assignment.</summary>
+        Task<bool> ChangeDepartmentAsync(string userId, Guid? departmentId, CancellationToken cancellationToken = default);
     }
 }
