@@ -2,10 +2,15 @@ name: .NET
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -13,26 +18,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    
-    - name: Checkout repository
-      uses: actions/checkout@v4
 
-    - name: Setup .NET 9 SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.x
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Display .NET Info
-      run: dotnet --info
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
 
-    - name: Clear NuGet Cache
-      run: dotnet nuget locals all --clear
+      - name: Display .NET Info
+        run: dotnet --info
 
-    - name: Restore Dependencies
-      run: dotnet restore
+      - name: Restore Dependencies
+        run: dotnet restore FileHubOrg.sln
 
-    - name: Build Solution
-      run: dotnet build --configuration Release --no-restore
+      - name: Build Solution
+        run: dotnet build FileHubOrg.sln --configuration Release --no-restore
 
-    - name: Run Tests
-      run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Run Tests
+        run: dotnet test FileHubOrg.sln --configuration Release --no-build --verbosity normal
