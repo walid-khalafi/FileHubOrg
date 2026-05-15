@@ -15,7 +15,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\FileHubOrg.domain\FileHubOrg.Domain.csproj" />
+    <ProjectReference Include="..\FileHubOrg.Domain\FileHubOrg.Domain.csproj" />
     <ProjectReference Include="..\FileHubOrg.Infrastructure\FileHubOrg.Infrastructure.csproj" />
   </ItemGroup>
 
