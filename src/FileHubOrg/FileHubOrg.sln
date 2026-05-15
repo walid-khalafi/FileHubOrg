@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35931.197 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileHubOrg.Web", "FileHubOrg.Web\FileHubOrg.Web.csproj", "{1346FF4F-2A0E-4BE2-959F-A37F86F2D143}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileHubOrg.Domain", "FileHubOrg.domain\FileHubOrg.Domain.csproj", "{5BDC2A08-C8D3-47FB-8C37-052DB5819E70}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileHubOrg.Domain", "FileHubOrg.Domain\FileHubOrg.Domain.csproj", "{5BDC2A08-C8D3-47FB-8C37-052DB5819E70}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileHubOrg.Infrastructure", "FileHubOrg.Infrastructure\FileHubOrg.Infrastructure.csproj", "{73975E0B-1089-459D-854F-C284A4701E00}"
 EndProject
