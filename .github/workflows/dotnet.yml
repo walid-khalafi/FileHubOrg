@@ -34,7 +34,7 @@ jobs:
         run: dotnet restore FileHubOrg.sln
 
       - name: Build Solution
-        run: dotnet build ../src/FileHubOrg/FileHubOrg.sln --configuration Release --no-restore
+        run: dotnet build ./src/FileHubOrg/FileHubOrg.sln --configuration Release --no-restore
 
       - name: Run Tests
-        run: dotnet test ../src/FileHubOrg/FileHubOrg.sln --configuration Release --no-build --verbosity normal
+        run: dotnet test ./src/FileHubOrg/FileHubOrg.sln --configuration Release --no-build --verbosity normal
