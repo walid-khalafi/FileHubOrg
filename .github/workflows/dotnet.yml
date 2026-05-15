@@ -31,7 +31,7 @@ jobs:
         run: dotnet --info
 
       - name: Restore Dependencies
-        run: dotnet restore FileHubOrg.sln
+        run: dotnet restore ./src/FileHubOrg/FileHubOrg.sln
 
       - name: Build Solution
         run: dotnet build ./src/FileHubOrg/FileHubOrg.sln --configuration Release --no-restore
