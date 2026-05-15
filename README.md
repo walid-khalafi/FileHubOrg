@@ -19,6 +19,17 @@ FileHubOrg is a robust, secure, and user-friendly internal file management syste
 - **Configurable Settings:** Easily manage file size limits, allowed file types, and other application settings.
 - **Scalable Architecture:** Designed with clean separation of concerns (Web, Application, Domain, Infrastructure layers) for maintainability and future expansion.
 
+## 🔒 Secure File Access
+
+Files are never exposed through direct public URLs.
+
+All file downloads are protected via JWT-based authorization and validated server-side access control checks.
+
+This ensures:
+- Secure authenticated access
+- Prevention of unauthorized file sharing
+- Fine-grained permission enforcement
+- Protection against direct file enumeration
 ---
 
 ## 🛠️ Technology Stack
