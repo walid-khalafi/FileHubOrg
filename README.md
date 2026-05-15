@@ -1,7 +1,6 @@
 # FileHubOrg: Secure Internal File Management
 
-![FileHubOrg Logo](https://via.placeholder.com/150/007bff/ffffff?text=FileHubOrg) <!-- Placeholder for your actual logo -->
-
+![FileHubOrg Logo](https://github.com/walid-khalafi/FileHubOrg/blob/main/src/FileHubOrg/FileHubOrg.Web/wwwroot/images/logo.png?raw=true) 
 FileHubOrg is a robust, secure, and user-friendly internal file management system designed for organizations. It empowers authenticated users to seamlessly upload, organize, share, and access files while maintaining strict control over permissions and providing comprehensive audit trails. Built with a focus on modularity and scalability, FileHubOrg aims to streamline collaboration and enhance data security within your organization.
 
 ---
