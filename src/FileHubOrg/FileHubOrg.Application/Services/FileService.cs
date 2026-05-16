@@ -218,5 +218,37 @@ namespace FileHubOrg.Application.Services
 
             return file;
         }
+
+        public async Task<bool> UpdateFileLabelAsync(Guid fileId, Guid? labelId, string userId)
+        {
+            try
+            {
+                var file = await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id == fileId);
+                if (file == null)
+                    return false;
+
+                // Verify the user owns this file
+                if (file.CreatedBy != userId)
+                    return false;
+
+                // If labelId is provided, verify it belongs to the user
+                if (labelId.HasValue)
+                {
+                    var label = await _unitOfWork.Labels.GetFirstOrDefaultAsync(x => x.Id == labelId && x.CreatedBy == userId);
+                    if (label == null)
+                        return false;
+                }
+
+                file.LabelId = labelId;
+                await _unitOfWork.FileMetaData.UpdateAsync(file);
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating file label: {ex.Message}");
+                return false;
+            }
+        }
     }
 }

@@ -17,6 +17,7 @@ namespace FileHubOrg.Application.Interfaces
         Task<bool> DeleteFileAsync(Guid fileId, string userId);
         Task<FileMetaData> UploadFileAsync(FileMetaData file, Stream stream);
         Task<string> GenerateDownloadTokenAsync(Guid fileId, string userId);
+        Task<bool> UpdateFileLabelAsync(Guid fileId, Guid? labelId, string userId);
 
         string GetRootPath();
     }

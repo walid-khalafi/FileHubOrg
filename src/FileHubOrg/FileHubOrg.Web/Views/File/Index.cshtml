@@ -610,6 +610,12 @@
                                                     <i class="fa fa-share-alt me-2 text-info"></i> Share
                                                 </a>
                                             </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="openMoveLabelModal('@file.Id', '@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                                                    <i class="fa fa-tag me-2 text-warning"></i> Move
+                                                </a>
+                                            </li>
                                             <li><hr class="dropdown-divider" /></li>
                                             <li>
                                                 <a class="dropdown-item text-danger" href="#"
@@ -720,6 +726,29 @@
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+@* ── Move File to Label modal ── *@
+<div class="modal fade" id="moveLabelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-tag me-2"></i> Move File to Label</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Move <strong id="moveFileName"></strong> to a label:</p>
+                <div id="labelListContainer" class="list-group">
+                    <div class="text-center text-muted py-3">
+                        <i class="fa fa-spinner fa-spin me-2"></i> Loading labels…
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1550,6 +1579,104 @@ function removeMember(userId, userName) {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-user-minus"></i>'; }
         showToast('Failed to remove member.', 'danger');
     });
+}
+
+// ── Move File to Label ────────────────────────────────────
+var _currentMoveFileId = null;
+
+function openMoveLabelModal(fileId, fileName) {
+    _currentMoveFileId = fileId;
+    document.getElementById('moveFileName').textContent = fileName;
+    
+    var container = document.getElementById('labelListContainer');
+    container.innerHTML = '<div class="text-center text-muted py-3"><i class="fa fa-spinner fa-spin me-2"></i> Loading labels…</div>';
+    
+    // Fetch user's labels
+    fetch('/File/GetUserLabels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fileId)
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        renderLabelList(data);
+    })
+    .catch(function(err) {
+        console.error(err);
+        container.innerHTML = '<div class="alert alert-warning text-center small mb-0"><i class="fa fa-exclamation-circle me-1"></i> Error loading labels</div>';
+    });
+    
+    var modalEl = document.getElementById('moveLabelModal');
+    var existingModal = bootstrap.Modal.getInstance(modalEl);
+    if (existingModal) existingModal.dispose();
+    var modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function renderLabelList(labels) {
+    var container = document.getElementById('labelListContainer');
+    if (!labels || labels.length === 0) {
+        container.innerHTML = '<div class="alert alert-info text-center small mb-0"><i class="fa fa-info-circle me-1"></i> No labels found. Create a label first.</div>';
+        return;
+    }
+    
+    var html = '<div class="list-group list-group-flush">';
+    html += '<button type="button" class="list-group-item list-group-item-action py-2" onclick="moveFileToLabel(null)">';
+    html += '<i class="fa fa-folder-open me-2 text-muted"></i> <span class="text-muted small">No Label</span>';
+    html += '</button>';
+    
+    labels.forEach(function(label) {
+        html += '<button type="button" class="list-group-item list-group-item-action py-2" onclick="moveFileToLabel(\'' + label.id + '\')">';
+        html += '<i class="fa fa-tag me-2" style="color:' + (label.color || '#999') + '"></i> ';
+        html += '<span>' + escHtml(label.name) + '</span>';
+        html += '</button>';
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function moveFileToLabel(labelId) {
+    if (!_currentMoveFileId) return;
+    
+    var modal = bootstrap.Modal.getInstance(document.getElementById('moveLabelModal'));
+    if (modal) modal.hide();
+    
+    fetch('/File/UpdateFileLabel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            fileId: _currentMoveFileId,
+            labelId: labelId
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        showToast('File moved successfully.', 'success');
+        setTimeout(function() { location.reload(); }, 1000);
+    })
+    .catch(function(err) {
+        console.error(err);
+        showToast('Failed to move file.', 'danger');
+    });
+}
+
+function escHtml(text) {
+    if (!text) return '';
+    var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 </script>
 }

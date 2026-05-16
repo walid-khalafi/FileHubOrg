@@ -537,11 +537,89 @@ namespace FileHubOrg.Web.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred. Please try again later." });
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> GetUserLabels([FromBody] Guid fileId)
+        {
+            var userId = GetUserId();
+            
+            try
+            {
+                var labels = await _labelService.GetLabelsAsync(userId);
+                
+                if (labels == null || labels.Count == 0)
+                {
+                    return Ok(new List<object>());
+                }
+
+                var labelData = labels.Select(l => new
+                {
+                    id = l.Id.ToString(),
+                    name = l.Name,
+                    color = "#999" // You can add color property to Label entity if needed
+                }).ToList();
+
+                return Ok(labelData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting user labels: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateFileLabel([FromBody] UpdateFileLabelRequest request)
+        {
+            if (request == null || request.FileId == Guid.Empty)
+            {
+                return BadRequest("Invalid request data: FileId is required.");
+            }
+
+            var userId = GetUserId();
+            var file = await _fileService.GetFileAsync(request.FileId);
+            
+            if (file == null)
+            {
+                return NotFound("File not found.");
+            }
+
+            // Verify the user owns this file
+            if (file.CreatedBy != userId)
+            {
+                return Forbid("You do not have permission to modify this file.");
+            }
+
+            try
+            {
+                var success = await _fileService.UpdateFileLabelAsync(request.FileId, request.LabelId, userId);
+                
+                if (success)
+                {
+                    return Ok(new { message = "File label updated successfully." });
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to update file label." });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating file label: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+            }
+        }
     }
 
     public class RemoveFileMemberRequest
     {
         public Guid FileId { get; set; }
         public string UserId { get; set; } = string.Empty;
+    }
+
+    public class UpdateFileLabelRequest
+    {
+        public Guid FileId { get; set; }
+        public Guid? LabelId { get; set; }
     }
 }
