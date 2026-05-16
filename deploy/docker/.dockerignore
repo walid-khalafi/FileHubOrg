@@ -1,0 +1,29 @@
+﻿# Docker ignore file for the ASP.NET Core build context
+
+# Git and editor state
+.git
+.gitignore
+.vscode
+.vs
+
+# Local runtime and build artifacts
+**/bin
+**/obj
+**/out
+
+# Common temporary files
+*.log
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vspscc
+
+# Local development secrets/configuration
+**/appsettings.Development.json
+**/secrets.json
+**/*.pfx
+
+# Docker-related files that are not needed in the build context
+*.md
+build_out.txt
