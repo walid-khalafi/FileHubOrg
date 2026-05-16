@@ -74,11 +74,14 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
 # StyleCop
 StyleCopReport.xml
+
+
 
 # Files built by Visual Studio
 *_i.c
@@ -416,3 +419,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local development secrets
+appsettings.Development.json 
