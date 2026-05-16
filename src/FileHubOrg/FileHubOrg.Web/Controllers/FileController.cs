@@ -4,6 +4,7 @@ using FileHubOrg.Web.Models.FileViewModels;
 using FileHubOrg.Web.Models.LabelViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -194,6 +195,82 @@ namespace FileHubOrg.Web.Controllers
             return Ok(new { downloadUrl });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> GeneratePreviewToken([FromBody] Guid fileId)
+        {
+            var userId = GetUserId();
+            var file = await _fileService.GetFileAsync(fileId);
+            if (file == null)
+            {
+                return NotFound("File not found.");
+            }
+
+            if (!file.CreatedBy.Equals(userId))
+            {
+                var members = await _fileService.GetFileMembersAsync(userId, fileId);
+                var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(userId));
+                if (!isCurrentUserIsMember)
+                {
+                    return Forbid();
+                }
+            }
+
+            var jwt = await _jwtService.GenerateDownloadJwtAsync(fileId, userId);
+            var previewUrl = Url.Action("PreviewViaJwt", "File", new { token = jwt }, Request.Scheme);
+            return Ok(new { previewUrl });
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> PreviewViaJwt(string token)
+        {
+            var principal = _jwtService.ValidateDownloadToken(token);
+            if (principal == null)
+                return Unauthorized();
+
+            var fileId = Guid.Parse(principal.FindFirst("fileId")?.Value);
+            var userId = principal.FindFirst("userId")?.Value;
+
+            if (fileId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
+                return BadRequest();
+
+            var file = await _fileService.GetFileAsync(fileId);
+            if (file == null || !System.IO.File.Exists(Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName)))
+                return NotFound();
+
+            if (!file.CreatedBy.Equals(userId))
+            {
+                var members = await _fileService.GetFileMembersAsync(userId, fileId);
+                var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(userId));
+                if (!isCurrentUserIsMember)
+                {
+                    return Forbid();
+                }
+            }
+
+            var dbToken = await _jwtService.GetDownloadTokenAsync(token);
+            if (dbToken == null)
+            {
+                return NotFound();
+            }
+
+            var filePath = Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName);
+            var contentType = GetContentType(file.OrginalName);
+            Response.Headers["Content-Disposition"] = $"inline; filename=\"{file.OrginalName}\"";
+            return PhysicalFile(filePath, contentType);
+        }
+
+        [NonAction]
+        private string GetContentType(string fileName)
+        {
+            var provider = new FileExtensionContentTypeProvider();
+            if (provider.TryGetContentType(fileName, out var contentType))
+            {
+                return contentType;
+            }
+            return "application/octet-stream";
+        }
+
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> DownloadViaJwt(string token)
@@ -209,11 +286,8 @@ namespace FileHubOrg.Web.Controllers
             if (fileId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
                 return BadRequest();
 
-
             var file = await _fileService.GetFileAsync(fileId);
-
-           
-
+            
             if (file == null || !System.IO.File.Exists(Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName)))
                 return NotFound();
 
@@ -227,7 +301,6 @@ namespace FileHubOrg.Web.Controllers
                 }
             }
 
-
             var dbToken = await _jwtService.GetDownloadTokenAsync(token);
             if (dbToken == null)
             {
@@ -238,8 +311,7 @@ namespace FileHubOrg.Web.Controllers
             dbToken.UsedAt = DateTime.UtcNow;
             await _jwtService.UpdateDownloadToken(dbToken);
             var filePath = Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName);
-
-            var contentType = "application/octet-stream";
+            var contentType = GetContentType(file.OrginalName);
             return PhysicalFile(filePath, contentType, file.OrginalName);
 
         }

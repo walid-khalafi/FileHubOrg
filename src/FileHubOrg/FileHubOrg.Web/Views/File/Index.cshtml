@@ -393,6 +393,64 @@
         flex-shrink: 0;
     }
     .member-remove-btn:hover { background: #fee2e2; color: #dc2626; }
+
+    /* ── Preview modal ── */
+    .preview-modal .modal-content {
+        background: #0b1220;
+        border: none;
+        min-height: 100vh;
+    }
+    .preview-modal .modal-header {
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    .preview-modal .modal-title {
+        color: #fff;
+        font-size: 1rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: calc(100vw - 180px);
+    }
+    .preview-modal .modal-body {
+        padding: 0;
+        min-height: calc(100vh - 60px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .preview-frame {
+        width: 100%;
+        height: calc(100vh - 60px);
+        border: none;
+        background: #090b15;
+        display: block;
+    }
+    .preview-image {
+        max-width: 100%;
+        max-height: calc(100vh - 60px);
+        width: auto;
+        height: auto;
+        display: none;
+        margin: auto;
+    }
+    .preview-loading,
+    .preview-error {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #e2e8f0;
+        background: rgba(15,23,42,0.88);
+        z-index: 2;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .preview-error i {
+        font-size: 2rem;
+        margin-bottom: .75rem;
+    }
 </style>
 }
 
@@ -534,6 +592,12 @@
                                             <i class="fa fa-ellipsis-v"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="openPreviewModal('@file.Id','@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                                                    <i class="fa fa-eye me-2 text-primary"></i> Preview
+                                                </a>
+                                            </li>
                                             <li>
                                                 <a class="dropdown-item" href="#"
                                                    onclick="requestDownload('@file.Id'); return false;">
@@ -768,6 +832,36 @@
     </div>
 </div>
 
+@* ── Preview File modal ── *@
+<div class="modal fade preview-modal" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content rounded-0">
+            <div class="modal-header border-0">
+                <div class="me-3">
+                    <h5 class="modal-title" id="previewModalTitle">Preview</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body position-relative">
+                <div id="previewLoading" class="preview-loading">
+                    <div>
+                        <div class="spinner-border text-light" role="status"></div>
+                        <div class="mt-3 text-light small">Loading preview…</div>
+                    </div>
+                </div>
+                <iframe id="previewIframe" class="preview-frame" src=""></iframe>
+                <img id="previewImage" class="preview-image" src="" alt="Preview image" />
+                <div id="previewError" class="preview-error" style="display:none;">
+                    <div>
+                        <i class="fa fa-exclamation-circle"></i>
+                        <div class="mt-2">Unable to preview this file. Please download it instead.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section ScriptsChild {
 <script>
 // ── Toast ─────────────────────────────────────────────────────
@@ -822,6 +916,84 @@ function sortTable(col, dir) {
         return 0;
     });
     rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+function isImageFile(fileName) {
+    if (!fileName) return false;
+    var ext = fileName.split('.').pop().toLowerCase();
+    return ['jpg','jpeg','png','gif','webp','bmp','tiff','svg'].includes(ext);
+}
+
+function openPreviewModal(fileId, fileName) {
+    var title = document.getElementById('previewModalTitle');
+    var iframe = document.getElementById('previewIframe');
+    var image = document.getElementById('previewImage');
+    var loading = document.getElementById('previewLoading');
+    var error = document.getElementById('previewError');
+
+    if (title) title.textContent = fileName || 'Preview';
+    if (iframe) {
+        iframe.src = '';
+        iframe.style.display = 'block';
+    }
+    if (image) {
+        image.src = '';
+        image.style.display = 'none';
+    }
+    if (loading) { loading.style.display = 'flex'; }
+    if (error) { error.style.display = 'none'; }
+
+    fetch('/File/GeneratePreviewToken', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fileId)
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        var isImage = isImageFile(fileName);
+        if (data.previewUrl) {
+            if (isImage && image) {
+                if (iframe) iframe.style.display = 'none';
+                image.style.display = 'none';
+                image.onload = function() {
+                    if (loading) loading.style.display = 'none';
+                    image.style.display = 'block';
+                };
+                image.onerror = function() {
+                    if (loading) loading.style.display = 'none';
+                    if (error) error.style.display = '';
+                };
+                image.src = data.previewUrl;
+            } else if (iframe) {
+                if (image) image.style.display = 'none';
+                iframe.style.display = 'block';
+                iframe.onload = function() {
+                    if (loading) loading.style.display = 'none';
+                };
+                iframe.onerror = function() {
+                    if (loading) loading.style.display = 'none';
+                    if (error) error.style.display = '';
+                };
+                iframe.src = data.previewUrl;
+            }
+        } else {
+            throw new Error('Preview URL not returned');
+        }
+    })
+    .catch(function(err) {
+        console.error('Preview error:', err);
+        if (loading) loading.style.display = 'none';
+        if (error) error.style.display = '';
+    });
+
+    var modalEl = document.getElementById('previewModal');
+    var existingModal = bootstrap.Modal.getInstance(modalEl);
+    if (existingModal) existingModal.dispose();
+    var modal = new bootstrap.Modal(modalEl);
+    modal.show();
 }
 
 // ── Delete ────────────────────────────────────────────────────
