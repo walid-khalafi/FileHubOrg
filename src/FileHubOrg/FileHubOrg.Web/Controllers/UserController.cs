@@ -1,7 +1,12 @@
 using FileHubOrg.Application.Interfaces;
+using FileHubOrg.Domain.Entities.User;
+using FileHubOrg.Infrastructure.Data;
+using FileHubOrg.Web.Models.AccountViewModels;
 using FileHubOrg.Web.Models.UserViewModels;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace FileHubOrg.Web.Controllers
 {
@@ -10,11 +15,22 @@ namespace FileHubOrg.Web.Controllers
     {
         private readonly IApplicationUserService _userService;
         private readonly IDepartmentService _departmentService;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly FileHubOrgDbContext _context;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IApplicationUserService userService, IDepartmentService departmentService)
+        public UserController(
+            IApplicationUserService userService,
+            IDepartmentService departmentService,
+            UserManager<ApplicationUser> userManager,
+            FileHubOrgDbContext context,
+            ILogger<UserController> logger)
         {
             _userService = userService;
             _departmentService = departmentService;
+            _userManager = userManager;
+            _context = context;
+            _logger = logger;
         }
 
         // GET /User
@@ -30,6 +46,97 @@ namespace FileHubOrg.Web.Controllers
             };
 
             return View(model);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public IActionResult Register(string returnUrl = "")
+        {
+            ViewData["ReturnUrl"] = returnUrl;
+            return View();
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterViewModel model, string returnUrl = "")
+        {
+            ViewData["ReturnUrl"] = returnUrl;
+
+            if (!ModelState.IsValid)
+            {
+                TempData["error_msg"] = "Please correct the errors in the registration form and try again.";
+                return View(model);
+            }
+
+            try
+            {
+                var existingUserByPhone = await _userManager.FindByNameAsync(model.PhoneNumber);
+                if (existingUserByPhone != null)
+                {
+                    TempData["error_msg"] = "This phone number is already registered. If you've forgotten your password, please use the password recovery option.";
+                    return View(model);
+                }
+
+                var existingUserByEmail = await _userManager.FindByEmailAsync(model.Email);
+                if (existingUserByEmail != null)
+                {
+                    TempData["error_msg"] = "This email address is already registered. If you've forgotten your password, please use the password recovery option.";
+                    return View(model);
+                }
+
+                var newUser = new ApplicationUser
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    UserName = model.Email,
+                    Email = model.Email,
+                    PhoneNumber = model.PhoneNumber
+                };
+
+                var createResult = await _userManager.CreateAsync(newUser, model.Password);
+
+                if (createResult.Succeeded)
+                {
+                    var clientRole = await _context.Roles.FindAsync("Client");
+                    if (clientRole == null)
+                    {
+                        _context.Roles.Add(new ApplicationRole
+                        {
+                            ConcurrencyStamp = Guid.NewGuid().ToString(),
+                            Id = Guid.NewGuid().ToString(),
+                            Name = "Client",
+                            NormalizedName = "CLIENT",
+                            Description = "Standard client user role",
+                            DisplayName = "Client"
+                        });
+                        await _context.SaveChangesAsync();
+                    }
+
+                    await _userManager.AddToRoleAsync(newUser, "Client");
+                    _logger.LogInformation("New user account created successfully for user: {UserId}", newUser.Id);
+                    TempData["success_msg"] = "Registration successful! Please check your email for account activation instructions.";
+                    return RedirectToAction("Index");
+                }
+
+                AddErrors(createResult);
+                TempData["error_msg"] = "Registration failed. Please review the errors below and try again.";
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred during user registration");
+                TempData["error_msg"] = "An unexpected error occurred during registration. Please try again later.";
+                return View(model);
+            }
+        }
+
+        private void AddErrors(IdentityResult result)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
         }
 
         // GET /User/Edit/{id}
