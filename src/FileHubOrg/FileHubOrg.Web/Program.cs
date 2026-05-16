@@ -18,6 +18,9 @@ builder.Services.AddDbContext<FileHubOrgDbContext>(options =>
         b => b.MigrationsAssembly("FileHubOrg.Web"))
     );
 
+
+
+
 // Identity services
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 {
@@ -105,10 +108,11 @@ builder.Services.AddControllersWithViews();
 var app = builder.Build();
 
 
-
-
 using (var scope = app.Services.CreateScope())
 {
+    // Apply EF Core migrations automatically
+    var db = scope.ServiceProvider.GetRequiredService<FileHubOrgDbContext>(); db.Database.Migrate();
+
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<FileHubOrgDbContext>();
 
