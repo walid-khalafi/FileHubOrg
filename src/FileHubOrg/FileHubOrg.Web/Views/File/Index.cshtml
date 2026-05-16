@@ -914,6 +914,11 @@ function openShareModal(fileId) {
     document.getElementById('shareSearch').value = '';
     document.getElementById('shareStatusMsg').textContent = '';
     document.getElementById('shareSelectAllBar').style.display = 'none';
+    // restore the share button to its default markup
+    var submitBtn = document.getElementById('shareSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fa fa-share me-1"></i> Share <span id="shareSubmitCount" class="ms-1"></span>';
+    }
     // reset to Add People tab
     switchShareTab('add');
     document.getElementById('memberTabCount').style.display = 'none';
@@ -928,7 +933,13 @@ function openShareModal(fileId) {
     var fname = row ? (row.querySelector('.filename') || {}).textContent || '' : '';
     document.getElementById('shareModalFileName').textContent = fname.trim();
 
-    new bootstrap.Modal(document.getElementById('shareModal')).show();
+    var modalEl = document.getElementById('shareModal');
+    var existingModal = bootstrap.Modal.getInstance(modalEl);
+    if (existingModal) {
+        existingModal.dispose();
+    }
+    var modal = new bootstrap.Modal(modalEl);
+    modal.show();
 
     var url = new URL('/File/GetShareList', window.location.origin);
     url.searchParams.set('fileId', fileId);
@@ -1202,9 +1213,16 @@ function clearAllSelected() {
 function updateSubmitBtn() {
     var count = Object.keys(_selected).length;
     var btn   = document.getElementById('shareSubmitBtn');
+    if (!btn) return;
     var label = document.getElementById('shareSubmitCount');
+    if (!label) {
+        btn.innerHTML = '<i class="fa fa-share me-1"></i> Share <span id="shareSubmitCount" class="ms-1"></span>';
+        label = document.getElementById('shareSubmitCount');
+    }
     btn.disabled = count === 0;
-    label.textContent = count > 0 ? '(' + count + ')' : '';
+    if (label) {
+        label.textContent = count > 0 ? '(' + count + ')' : '';
+    }
 }
 
 function submitShareForm() {
@@ -1227,7 +1245,8 @@ function submitShareForm() {
         return r.json();
     })
     .then(function() {
-        var modal = bootstrap.Modal.getInstance(document.getElementById('shareModal'));
+        var modalEl = document.getElementById('shareModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
         showToast('Shared with ' + ids.length + ' person' + (ids.length > 1 ? 's' : '') + '.', 'success');
     })
@@ -1237,6 +1256,15 @@ function submitShareForm() {
         btn.innerHTML = '<i class="fa fa-share me-1"></i> Share <span id="shareSubmitCount">(' + ids.length + ')</span>';
     });
 }
+
+document.getElementById('shareModal').addEventListener('hidden.bs.modal', function() {
+    var modal = bootstrap.Modal.getInstance(this);
+    if (modal) {
+        modal.dispose();
+    }
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(function(el) { el.remove(); });
+});
 
 // ── Helpers ───────────────────────────────────────────────────
 function escHtml(s) {

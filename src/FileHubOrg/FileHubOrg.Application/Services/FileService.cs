@@ -60,8 +60,34 @@ namespace FileHubOrg.Application.Services
             // استفاده از ?. برای جلوگیری از NullReferenceException اگر HttpContext یا Connection null باشند
             string ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
 
+            var uniqueUserIds = userIds
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Select(u => u.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!uniqueUserIds.Any())
+            {
+                return false;
+            }
+
+            var existingMemberIds = await _unitOfWork.FileMembers
+                .AsQueryable()
+                .Where(x => x.FileMetadataId == fileId)
+                .Select(x => x.AssignedToId)
+                .ToListAsync();
+
+            var newMemberIds = uniqueUserIds
+                .Where(id => !existingMemberIds.Contains(id, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!newMemberIds.Any())
+            {
+                return true;
+            }
+
             // ساخت لیست FileMember با استفاده از LINQ برای خوانایی بهتر
-            var newFileMembers = userIds.Select(userId => new FileMember
+            var newFileMembers = newMemberIds.Select(userId => new FileMember
             {
                 Id = Guid.NewGuid(),
                 FileMetadataId = fileId,
@@ -70,7 +96,6 @@ namespace FileHubOrg.Application.Services
                 CreatedBy = file.CreatedBy, // شناسه کاربری که فایل را ایجاد کرده
                 CreatedByIP = ipAddress // IP آدرس کاربر فعلی
             }).ToList(); // تبدیل نتیجه LINQ به لیست
-
 
 
             try
@@ -129,14 +154,15 @@ namespace FileHubOrg.Application.Services
 
         public async Task<List<FileMember>> GetFileMembersAsync(string userId, Guid fileId)
         {
-            var file = await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id == fileId && x.CreatedBy == userId);
+            var file = await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id == fileId);
             if (file == null)
             {
                 throw new Exception("File Not Found");
             }
 
             List<FileMember> members = await _unitOfWork.FileMembers
-                .AsQueryable(x => x.FileMetadataId == fileId)
+                .AsQueryable()
+                .Where(x => x.FileMetadataId == fileId)
                 .Include(x => x.AssignedTo)
                 .Include(f => f.FileMetaData)
                 .ToListAsync();

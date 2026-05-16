@@ -270,12 +270,24 @@ namespace FileHubOrg.Web.Controllers
                 // we get an empty list instead of a NullReferenceException.
                 var departments = await _departmentService.GetDepartmentsAsync() ?? new List<Domain.Entities.Organization.Department>();
 
+                // Exclude the current user from the share picker list.
+                var currentUserId = GetUserId();
+                var visibleDepartments = departments
+                    .Select(d =>
+                    {
+                        d.Members = d.Members?
+                            .Where(u => !string.Equals(u.Id, currentUserId, StringComparison.OrdinalIgnoreCase))
+                            .ToList() ?? new List<Domain.Entities.User.ApplicationUser>();
+                        return d;
+                    })
+                    .Where(d => d.Members != null && d.Members.Any())
+                    .ToList();
+
                 // Prepare the model for the Partial View (_DepartmentList).
                 var model = new ShareListViewModel
                 {
                     fileId = fileId, // Pass the valid fileId to the model.
-                                     // Assign the fetched departments. If departments list was null, it will be an empty list.
-                    Departments = departments.ToList(),
+                    Departments = visibleDepartments,
                 };
 
                 // 3. --- Response ---
@@ -311,9 +323,14 @@ namespace FileHubOrg.Web.Controllers
 
             var file = await _fileService.GetFileAsync(fileId);
             if (file == null) return NotFound();
-            if (!file.CreatedBy.Equals(GetUserId())) return Forbid();
 
             var members = await _fileService.GetFileMembersAsync(GetUserId(), fileId);
+            var currentUserId = GetUserId();
+            if (!string.Equals(file.CreatedBy, currentUserId, StringComparison.Ordinal) &&
+                !members.Any(x => string.Equals(x.AssignedToId, currentUserId, StringComparison.Ordinal)))
+            {
+                return Forbid();
+            }
 
             var result = members.Select(m => new
             {
