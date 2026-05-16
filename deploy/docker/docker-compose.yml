@@ -1,40 +1,54 @@
-version: "3.9"
-
 services:
+
   app:
     build:
       context: ../../
       dockerfile: deploy/docker/Dockerfile
+
     container_name: filehuborg
+
     restart: unless-stopped
+
     env_file:
       - .env
+
     ports:
       - "8080:80"
+
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:80
+
       ConnectionStrings__DefaultConnection: "${DEFAULT_CONNECTION}"
       Jwt__Secret: "${JWT__SECRET}"
       Ldap__BindCredentials: "${LDAP__BINDCREDENTIALS}"
       Ldap__Url: "${LDAP__URL}"
+
     depends_on:
       - db
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+
+    container_name: filehuborg-sql
+
     restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "${SA_PASSWORD}"
+
     ports:
       - "1433:1433"
+
     volumes:
       - sql_data:/var/opt/mssql
+
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"${SA_PASSWORD}\" -Q \"SELECT 1\""]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -C -Q 'SELECT 1'"]
       interval: 10s
       timeout: 10s
       retries: 10
