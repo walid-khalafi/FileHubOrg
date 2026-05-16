@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<FileHubOrgDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("FileHubOrg.Web"))
+        b => b.MigrationsAssembly("FileHubOrg.Infrastructure"))
     );
 
 
