@@ -23,6 +23,8 @@
 **/appsettings.Development.json
 **/secrets.json
 **/*.pfx
+.env
+.env.*
 
 # Docker-related files that are not needed in the build context
 *.md
