@@ -18,6 +18,14 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create .env file
+        run: |
+          echo "DEFAULT_CONNECTION=${{ secrets.DEFAULT_CONNECTION }}" >> deploy/docker/.env
+          echo "SA_PASSWORD=${{ secrets.SA_PASSWORD }}" >> deploy/docker/.env
+          echo "JWT__SECRET=${{ secrets.JWT__SECRET }}" >> deploy/docker/.env
+          echo "LDAP__URL=${{ secrets.LDAP__URL }}" >> deploy/docker/.env
+          echo "LDAP__BINDCREDENTIALS=${{ secrets.LDAP__BINDCREDENTIALS }}" >> deploy/docker/.env
+
       - name: Build Docker Image
         run: |
           docker build \
