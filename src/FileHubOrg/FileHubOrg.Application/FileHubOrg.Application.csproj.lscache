@@ -13,18 +13,18 @@ primary
 lastDtbSucceeded
 
 [properties]
-AssemblyName=FileHubOrg.Web
+AssemblyName=FileHubOrg.Application
 CommandLineArgsForDesignTimeEvaluation=-langversion:13.0 -define:TRACE
 CompilerGeneratedFilesOutputPath=
 MaxSupportedLangVersion=13.0
 ProjectAssetsFile=<PATH>obj/project.assets.json
-RootNamespace=FileHubOrg.Web
+RootNamespace=FileHubOrg.Application
 RunAnalyzers=
 RunAnalyzersDuringLiveAnalysis=
 SolutionPath=*Undefined*
 TargetFrameworkIdentifier=.NETCoreApp
-TargetPath=<PATH>bin/Debug/net9.0/FileHubOrg.Web.dll
-TargetRefPath=<PATH>obj/Debug/net9.0/ref/FileHubOrg.Web.dll
+TargetPath=<PATH>bin/Debug/net9.0/FileHubOrg.Application.dll
+TargetRefPath=<PATH>obj/Debug/net9.0/ref/FileHubOrg.Application.dll
 TemporaryDependencyNodeTargetIdentifier=net9.0
 
 [commandLineArguments]
@@ -43,9 +43,9 @@ TemporaryDependencyNodeTargetIdentifier=net9.0
 /debug:portable
 /filealign:512
 /optimize-
-/out:obj\Debug\net9.0\FileHubOrg.Web.dll
-/refout:obj\Debug\net9.0\refint\FileHubOrg.Web.dll
-/target:exe
+/out:obj\Debug\net9.0\FileHubOrg.Application.dll
+/refout:obj\Debug\net9.0\refint\FileHubOrg.Application.dll
+/target:library
 /warnaserror-
 /utf8output
 /deterministic+
@@ -53,44 +53,29 @@ TemporaryDependencyNodeTargetIdentifier=net9.0
 /warnaserror+:NU1605,SYSLIB0011
 
 [sourceFiles]
-Controllers/
- AccountController.cs
- DepartmentController.cs
- FileController.cs
- HomeController.cs
- UserController.cs
-Models/AccountViewModels/
- ExternalLoginViewModel.cs
- ForgotPasswordViewModel.cs
- LoginViewModel.cs
- LoginWith2faViewModel.cs
- LoginWithRecoveryCodeViewModel.cs
- RegisterViewModel.cs
- ResetPasswordViewModel.cs
-Models/DepartmentViewModels/
- DepartmentUsersViewModel.cs
- IndexViewModel.cs
-Models/
- ErrorViewModel.cs
- FileViewModels/
-  IndexViewModel.cs
-  ShareFileRequestModel.cs
-  ShareListViewModel.cs
-  UserSharedFiles.cs
- LabelViewModels/CreateLabelViewModel.cs
- UserViewModels/
-  EditUserViewModel.cs
-  UserListViewModel.cs
+AssemblyMarker.cs
+Configurations/
+ FileStorageOptions.cs
+ StoragePathSettings.cs
+Interfaces/
+ IApplicationUserService.cs
+ IDepartmentService.cs
+ IFileService.cs
+ IJWTService.cs
+ ILabelService.cs
 obj/Debug/net9.0/
  .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
- FileHubOrg.Web.AssemblyInfo.cs
- FileHubOrg.Web.GlobalUsings.g.cs
- FileHubOrg.Web.RazorAssemblyInfo.cs
-Program.cs
+ FileHubOrg.Application.AssemblyInfo.cs
+ FileHubOrg.Application.GlobalUsings.g.cs
+Services/
+ ApplicationUserService.cs
+ DepartmentService.cs
+ FileService.cs
+ JWTService.cs
+ LabelService.cs
 
 [metadataReferences]
 ../
- FileHubOrg.Application/obj/Debug/net9.0/ref/FileHubOrg.Application.dll
  FileHubOrg.Domain/obj/Debug/net9.0/ref/FileHubOrg.Domain.dll
  FileHubOrg.Infrastructure/obj/Debug/net9.0/ref/FileHubOrg.Infrastructure.dll
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/9.0.7/ref/net9.0/
@@ -189,6 +174,8 @@ Program.cs
  Microsoft.Extensions.Configuration.KeyPerFile.dll
  Microsoft.Extensions.Configuration.UserSecrets.dll
  Microsoft.Extensions.Configuration.Xml.dll
+ Microsoft.Extensions.DependencyInjection.Abstractions.dll
+ Microsoft.Extensions.DependencyInjection.dll
  Microsoft.Extensions.Diagnostics.Abstractions.dll
  Microsoft.Extensions.Diagnostics.dll
  Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions.dll
@@ -279,6 +266,7 @@ Program.cs
  System.IO.FileSystem.Watcher.dll
  System.IO.IsolatedStorage.dll
  System.IO.MemoryMappedFiles.dll
+ System.IO.Pipelines.dll
  System.IO.Pipes.AccessControl.dll
  System.IO.Pipes.dll
  System.IO.UnmanagedMemoryStream.dll
@@ -356,6 +344,8 @@ Program.cs
  System.Text.Encoding.CodePages.dll
  System.Text.Encoding.dll
  System.Text.Encoding.Extensions.dll
+ System.Text.Encodings.Web.dll
+ System.Text.Json.dll
  System.Text.RegularExpressions.dll
  System.Threading.Channels.dll
  System.Threading.dll
@@ -390,7 +380,7 @@ Program.cs
  mediatr/12.5.0/lib/net6.0/MediatR.dll
  microsoft.aspnetcore.authentication.jwtbearer/8.0.17/lib/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
  microsoft.aspnetcore.identity.entityframeworkcore/9.0.0/lib/net9.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
- microsoft.bcl.asyncinterfaces/7.0.0/lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
+ microsoft.bcl.asyncinterfaces/1.1.1/ref/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
  microsoft.data.sqlclient/5.1.6/ref/net6.0/Microsoft.Data.SqlClient.dll
  microsoft.entityframeworkcore.abstractions/9.0.0/lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll
  microsoft.entityframeworkcore.relational/9.0.0/lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll
@@ -401,9 +391,6 @@ Program.cs
  microsoft.extensions.configuration.fileextensions/9.0.8/lib/net9.0/Microsoft.Extensions.Configuration.FileExtensions.dll
  microsoft.extensions.configuration.json/9.0.8/lib/net9.0/Microsoft.Extensions.Configuration.Json.dll
  microsoft.extensions.configuration/9.0.8/lib/net9.0/Microsoft.Extensions.Configuration.dll
- microsoft.extensions.dependencyinjection.abstractions/10.0.0/lib/net9.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll
- microsoft.extensions.dependencyinjection/9.0.15/lib/net9.0/Microsoft.Extensions.DependencyInjection.dll
- microsoft.extensions.dependencymodel/10.0.0/lib/net9.0/Microsoft.Extensions.DependencyModel.dll
  microsoft.extensions.fileproviders.abstractions/9.0.8/lib/net9.0/Microsoft.Extensions.FileProviders.Abstractions.dll
  microsoft.extensions.fileproviders.physical/9.0.8/lib/net9.0/Microsoft.Extensions.FileProviders.Physical.dll
  microsoft.extensions.filesystemglobbing/9.0.8/lib/net9.0/Microsoft.Extensions.FileSystemGlobbing.dll
@@ -420,14 +407,10 @@ Program.cs
  mysqlconnector/2.4.0/lib/net9.0/MySqlConnector.dll
  novell.directory.ldap.netstandard2_0/3.1.0/lib/netstandard2.0/Novell.Directory.Ldap.NETStandard.dll
  pomelo.entityframeworkcore.mysql/9.0.0/lib/net8.0/Pomelo.EntityFrameworkCore.MySql.dll
- scrutor/7.0.0/lib/net8.0/Scrutor.dll
  system.clientmodel/1.0.0/lib/net6.0/System.ClientModel.dll
  system.identitymodel.tokens.jwt/8.12.1/lib/net9.0/System.IdentityModel.Tokens.Jwt.dll
- system.io.pipelines/10.0.0/lib/net9.0/System.IO.Pipelines.dll
  system.memory.data/1.0.2/lib/netstandard2.0/System.Memory.Data.dll
  system.security.cryptography.protecteddata/6.0.0/lib/net6.0/System.Security.Cryptography.ProtectedData.dll
- system.text.encodings.web/10.0.0/lib/net9.0/System.Text.Encodings.Web.dll
- system.text.json/10.0.0/lib/net9.0/System.Text.Json.dll
 
 [analyzerReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/9.0.7/analyzers/dotnet/cs/
@@ -442,103 +425,13 @@ Program.cs
  Microsoft.Interop.JavaScript.JSImportGenerator.dll
  Microsoft.Interop.LibraryImportGenerator.dll
  Microsoft.Interop.SourceGeneration.dll
+ System.Text.Json.SourceGeneration.dll
  System.Text.RegularExpressions.Generator.dll
-<DOTNET>/sdk/9.0.303/Sdks/Microsoft.NET.Sdk.Razor/source-generators/
- Microsoft.AspNetCore.Razor.Utilities.Shared.dll
- Microsoft.CodeAnalysis.Razor.Compiler.dll
- Microsoft.Extensions.ObjectPool.dll
- System.Collections.Immutable.dll
-<DOTNET>/sdk/9.0.303/Sdks/Microsoft.NET.Sdk.Web/analyzers/cs/
- Microsoft.AspNetCore.Analyzers.dll
- Microsoft.AspNetCore.Mvc.Analyzers.dll
 <DOTNET>/sdk/9.0.303/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
-<NUGET>/microsoft.codeanalysis.analyzers/3.3.4/analyzers/dotnet/cs/
- Microsoft.CodeAnalysis.Analyzers.dll
- Microsoft.CodeAnalysis.CSharp.Analyzers.dll
-<NUGET>/
- microsoft.entityframeworkcore.analyzers/9.0.0/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
- system.text.json/10.0.0/analyzers/dotnet/roslyn4.4/cs/System.Text.Json.SourceGeneration.dll
+<NUGET>/microsoft.entityframeworkcore.analyzers/9.0.0/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
 
 [analyzerConfigFiles]
 <DOTNET>/sdk/9.0.303/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_9_default.globalconfig
-obj/Debug/net9.0/FileHubOrg.Web.GeneratedMSBuildEditorConfig.editorconfig
-
-[additionalFiles]
-Views/Account/
- AccessDenied.cshtml
- ConfirmEmail.cshtml
- ExternalLogin.cshtml
- ForgotPassword.cshtml
- ForgotPasswordConfirmation.cshtml
- Lockout.cshtml
- Login.cshtml
- LoginWith2fa.cshtml
- LoginWithRecoveryCode.cshtml
- Register.cshtml
- ResetPassword.cshtml
- ResetPasswordConfirmation.cshtml
- SignedOut.cshtml
-Views/Department/
- Index.cshtml
- Users.cshtml
-Views/File/
- Index.cshtml
- UserSharedFiles.cshtml
- _DepartmentList.cshtml
- _UserList.cshtml
-Views/Home/
- Index.cshtml
- Privacy.cshtml
-Views/Shared/
- Error.cshtml
- _Layout.cshtml
- _LayoutFile.cshtml
- _SidebarContent.cshtml
- _ValidationScriptsPartial.cshtml
-Views/User/
- Edit.cshtml
- Index.cshtml
-Views/
- _ViewImports.cshtml
- _ViewStart.cshtml
-
-[dynamicFiles]
-Views/Account/
- AccessDenied.cshtml
- ConfirmEmail.cshtml
- ExternalLogin.cshtml
- ForgotPassword.cshtml
- ForgotPasswordConfirmation.cshtml
- Lockout.cshtml
- Login.cshtml
- LoginWith2fa.cshtml
- LoginWithRecoveryCode.cshtml
- Register.cshtml
- ResetPassword.cshtml
- ResetPasswordConfirmation.cshtml
- SignedOut.cshtml
-Views/Department/
- Index.cshtml
- Users.cshtml
-Views/File/
- Index.cshtml
- UserSharedFiles.cshtml
- _DepartmentList.cshtml
- _UserList.cshtml
-Views/Home/
- Index.cshtml
- Privacy.cshtml
-Views/Shared/
- Error.cshtml
- _Layout.cshtml
- _LayoutFile.cshtml
- _SidebarContent.cshtml
- _ValidationScriptsPartial.cshtml
-Views/User/
- Edit.cshtml
- Index.cshtml
-Views/
- _ViewImports.cshtml
- _ViewStart.cshtml
+obj/Debug/net9.0/FileHubOrg.Application.GeneratedMSBuildEditorConfig.editorconfig
