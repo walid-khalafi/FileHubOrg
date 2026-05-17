@@ -197,6 +197,12 @@
                                                 <i class="fa fa-pen me-2 text-primary"></i> Edit
                                             </a>
                                         </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Activity" asp-route-id="@user.Id">
+                                                <i class="fa fa-chart-line me-2 text-secondary"></i> Activity
+                                            </a>
+                                        </li>
+
                                         @if (user.IsActive)
                                         {
                                             <li>

@@ -1,0 +1,178 @@
+@model FileHubOrg.Web.Models.UserViewModels.UserActivityViewModel
+@{
+    Layout = "_LayoutFile";
+    ViewData["Title"] = $"User Activity — {Model.FullName}";
+
+    string badgeClass = Model.IsActive ? "status-badge-active" : "status-badge-inactive";
+}
+
+<style>
+    .edit-avatar {
+        width: 64px; height: 64px; border-radius: 50%;
+        background: #4f46e5; color: #fff;
+        font-size: 1.4rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .form-card {
+        border: none; border-radius: 14px; background: #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+
+    .form-card .card-header {
+        background: transparent; border-bottom: 1px solid #f3f4f6;
+        padding: .9rem 1.25rem; font-weight: 600; font-size: .875rem;
+    }
+
+    .form-card .card-body { padding: 1.25rem; }
+
+    .field-label { font-size: .8rem; font-weight: 600; color: #6b7280; margin-bottom: .3rem; }
+    .readonly-field {
+        background: #f9fafb; border: 1.5px solid #f3f4f6;
+        border-radius: 8px; padding: .45rem .75rem;
+        font-size: .875rem; color: #374151;
+    }
+
+    .status-badge-active {
+        display: inline-block; padding: 0.35rem 0.75rem; border-radius: 20px;
+        background: #d1fae5; color: #065f46; font-size: 0.8rem; font-weight: 600;
+    }
+
+    .status-badge-inactive {
+        display: inline-block; padding: 0.35rem 0.75rem; border-radius: 20px;
+        background: #fee2e2; color: #7f1d1d; font-size: 0.8rem; font-weight: 600;
+    }
+
+    .stat-item {
+        display: flex; justify-content: space-between;
+        padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;
+        gap: 1rem;
+    }
+
+    .stat-item:last-child { border-bottom: none; }
+
+    .stat-label { color: #6b7280; font-size: 0.9rem; }
+    .stat-value { font-weight: 700; color: #111827; }
+
+    .upload-limit-bar {
+        height: 24px; border-radius: 8px; background: #e5e7eb; overflow: hidden;
+    }
+
+    .upload-limit-fill {
+        height: 100%; background: linear-gradient(90deg, #10b981, #4f46e5);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 0.75rem; font-weight: 600;
+    }
+
+    .muted-note { color: #6b7280; font-size: .85rem; }
+</style>
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb bg-light px-3 py-2 rounded small mb-0">
+        <li class="breadcrumb-item">
+            <a asp-action="Index" class="text-decoration-none">
+                <i class="fa fa-users-cog me-1"></i> Users
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Activity</li>
+    </ol>
+</nav>
+
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <div class="edit-avatar">
+        @((Model.FullName?.Length > 0 ? Model.FullName : Model.Email)?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0].ToString().ToUpper()).Aggregate(string.Empty, (acc, x) => acc + x) ?? "?" )
+    </div>
+    <div class="flex-grow-1">
+        <h1 class="h4 fw-bold mb-0">User Activity</h1>
+        <p class="text-muted small mb-1">@Model.Email</p>
+        <span class="@badgeClass">
+            @(Model.IsActive ? "✓ Active" : "✕ Deactivated")
+        </span>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="form-card">
+            <div class="card-header">
+                <i class="fa fa-user me-2 text-muted"></i>Profile
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="field-label">Full Name</div>
+                        <div class="readonly-field">@Model.FullName</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="field-label">Phone Number</div>
+                        <div class="readonly-field">@(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Department</div>
+                        <div class="readonly-field">@Model.DepartmentName</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="field-label">Last Login</div>
+                        <div class="readonly-field">@(Model.LastLoginAt?.ToString("g") ?? "Never")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="field-label">Last Activity</div>
+                        <div class="readonly-field">@(Model.LastActivityAt?.ToString("g") ?? "Never")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="form-card h-100">
+            <div class="card-header">
+                <i class="fa fa-chart-bar me-2 text-muted"></i>Upload Activity
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="stat-item">
+                            <span class="stat-label">Files Uploaded</span>
+                            <span class="stat-value">@Model.UploadedFilesCount</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Uploaded Size (MB)</span>
+                            <span class="stat-value">@Math.Round(Model.TotalUploadedSizeMB, 2)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Upload Usage</span>
+                            <span class="stat-value">@Math.Round(Model.UploadUsagePercentage, 2)%</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.UploadUsagePercentage > 0)
+                {
+                    <div class="mt-4">
+                        <div class="muted-note mb-2">Usage progress</div>
+                        <div class="upload-limit-bar">
+                            <div class="upload-limit-fill" style="width:@Math.Min(Model.UploadUsagePercentage, 100)%">
+                                @Math.Round(Math.Min(Model.UploadUsagePercentage, 100), 0)%
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-4 muted-note">
+                        No upload activity yet.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 d-flex gap-2 justify-content-end">
+    <a asp-action="Index" class="btn btn-secondary rounded-pill px-4">
+        <i class="fa fa-arrow-left me-1"></i> Back
+    </a>
+</div>
+

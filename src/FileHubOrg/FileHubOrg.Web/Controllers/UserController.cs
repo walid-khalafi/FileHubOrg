@@ -42,6 +42,47 @@ namespace FileHubOrg.Web.Controllers
             return View(model);
         }
 
+        // GET /User/Activity/{id}
+        public async Task<IActionResult> Activity(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest();
+
+            var user = await _userService.GetUserProfileAsync(id);
+            if (user == null)
+                return NotFound();
+
+            var (fileCount, totalSizeBytes, limitBytes) = await _userService.GetUserUploadStatsAsync(id);
+
+            var departmentName = user.Department?.Name ?? "—";
+
+            // If upload limit is unlimited, UploadUsagePercentage cannot be computed.
+            // Existing view model expects a percentage value; we show 0 in that case.
+            var uploadUsagePercentage = 0d;
+            if (limitBytes.HasValue && limitBytes.Value > 0)
+            {
+                uploadUsagePercentage = (totalSizeBytes / (double)limitBytes.Value) * 100;
+            }
+
+            var model = new UserActivityViewModel
+            {
+                UserId                   = user.Id,
+                FullName                = user.FullName,
+                Email                    = user.Email ?? string.Empty,
+                PhoneNumber              = user.PhoneNumber ?? string.Empty,
+                DepartmentName          = departmentName,
+                IsActive                 = user.IsActive,
+                LastLoginAt              = user.LastLoginAt,
+                LastActivityAt           = user.LastActivityAt,
+                UploadedFilesCount       = fileCount,
+                TotalUploadedSizeMB      = totalSizeBytes / (1024.0 * 1024.0),
+                UploadUsagePercentage    = uploadUsagePercentage
+            };
+
+            return View(model);
+        }
+
+
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public IActionResult Register(string returnUrl = "")
