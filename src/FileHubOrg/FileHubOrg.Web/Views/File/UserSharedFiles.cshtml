@@ -209,14 +209,26 @@
                                     @file.CreatedAt.ToString("MMM d, yyyy")
                                 </td>
                                 <td class="text-center">
-                                    <button class="dl-btn me-2" title="Preview"
-                                            onclick="openPreviewModal('@file.Id','@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")')">
-                                        <i class="fa fa-eye" style="font-size:.8rem;"></i>
-                                    </button>
-                                    <button class="dl-btn" title="Download"
-                                            onclick="requestDownload('@file.Id')">
-                                        <i class="fa fa-download" style="font-size:.8rem;"></i>
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false" title="Actions">
+                                            <i class="fa fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="openPreviewModal('@file.Id','@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                                                    <i class="fa fa-eye me-2 text-primary"></i> Preview
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="requestDownload('@file.Id'); return false;">
+                                                    <i class="fa fa-download me-2 text-success"></i> Download
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                         }
