@@ -22,6 +22,16 @@ namespace FileHubOrg.Application.Interfaces
         /// <returns>The user profile or null if not found.</returns>
         Task<ApplicationUser?> GetUserProfileAsync(string userId, CancellationToken cancellationToken = default);
 
+        Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+        Task<ApplicationUser?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default);
+
+        Task<IdentityResult> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default);
+
+        Task<bool> EnsureRoleExistsAsync(string roleName, string displayName = "", string description = "", CancellationToken cancellationToken = default);
+
+        Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Updates a user's full name.
         /// </summary>

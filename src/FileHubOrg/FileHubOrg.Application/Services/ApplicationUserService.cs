@@ -17,14 +17,20 @@ namespace FileHubOrg.Application.Services
     public class ApplicationUserService : IApplicationUserService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApplicationUserService"/> class.
         /// </summary>
         /// <param name="unitOfWork">The unit of work instance.</param>
-        public ApplicationUserService(IUnitOfWork unitOfWork)
+        /// <param name="userManager">The user manager.</param>
+        /// <param name="roleManager">The role manager.</param>
+        public ApplicationUserService(IUnitOfWork unitOfWork, UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));
         }
 
         /// <inheritdoc />
@@ -148,6 +154,70 @@ namespace FileHubOrg.Application.Services
         public async Task<IReadOnlyList<ApplicationUser>> GetAllUsersAsync(CancellationToken cancellationToken = default)
         {
             return await _unitOfWork.ApplicationUsers.FindAsync(_ => true, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<IdentityResult> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default)
+        {
+            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (string.IsNullOrWhiteSpace(password)) throw new ArgumentException("Password cannot be null or empty.", nameof(password));
+
+            return await _userManager.CreateAsync(user, password);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> EnsureRoleExistsAsync(string roleName, string displayName = "", string description = "", CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(roleName)) throw new ArgumentException("Role name cannot be null or empty.", nameof(roleName));
+
+            if (await _roleManager.RoleExistsAsync(roleName))
+            {
+                return true;
+            }
+
+            var role = new ApplicationRole
+            {
+                ConcurrencyStamp = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid().ToString(),
+                Name = roleName,
+                NormalizedName = roleName.ToUpperInvariant(),
+                DisplayName = string.IsNullOrWhiteSpace(displayName) ? roleName : displayName,
+                Description = description ?? string.Empty
+            };
+
+            var result = await _roleManager.CreateAsync(role);
+            return result.Succeeded;
+        }
+
+        /// <inheritdoc />
+        public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken = default)
+        {
+            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (string.IsNullOrWhiteSpace(roleName)) throw new ArgumentException("Role name cannot be null or empty.", nameof(roleName));
+
+            return await _userManager.AddToRoleAsync(user, roleName);
+        }
+
+        /// <inheritdoc />
+        public async Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new ArgumentException("Email cannot be null or empty.", nameof(email));
+            }
+
+            return await _unitOfWork.ApplicationUsers.GetByEmailAsync(email, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<ApplicationUser?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                throw new ArgumentException("Phone number cannot be null or empty.", nameof(phoneNumber));
+            }
+
+            return await _unitOfWork.ApplicationUsers.GetByPhoneNumberAsync(phoneNumber, cancellationToken);
         }
 
         /// <inheritdoc />

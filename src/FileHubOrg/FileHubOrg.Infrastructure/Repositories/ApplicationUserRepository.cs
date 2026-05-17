@@ -47,6 +47,11 @@ namespace FileHubOrg.Infrastructure.Repositories
             return await _userManager.FindByEmailAsync(email);
         }
 
+        public async Task<ApplicationUser?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken ct = default)
+        {
+            return await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber, ct);
+        }
+
         public async Task<ApplicationUser?> GetByUserNameAsync(string userName, CancellationToken ct = default)
         {
             return await _userManager.FindByNameAsync(userName);

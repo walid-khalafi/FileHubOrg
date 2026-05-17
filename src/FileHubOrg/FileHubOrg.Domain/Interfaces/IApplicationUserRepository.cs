@@ -32,6 +32,14 @@ namespace FileHubOrg.Domain.Interfaces
         Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken ct = default);
 
         /// <summary>
+        /// Gets a user by their phone number.
+        /// </summary>
+        /// <param name="phoneNumber">The phone number.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The user or null if not found.</returns>
+        Task<ApplicationUser?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken ct = default);
+
+        /// <summary>
         /// Gets a users by their department id.
         /// </summary>
         /// <param name="departmentId">The department id.</param>
