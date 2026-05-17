@@ -100,23 +100,26 @@ namespace FileHubOrg.Web.Controllers
             };
 
             var files = await _fileService.GetFilesAsync(id);
+            var visibleFiles = new List<Domain.Entities.File.FileMetaData>();
 
             foreach (var file in files)
             {
-
                 if (!file.CreatedBy.Equals(GetUserId()))
                 {
                     var members = await _fileService.GetFileMembersAsync(id, file.Id);
                     var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(GetUserId()));
                     if (!isCurrentUserIsMember)
                     {
-                        files.Remove(file);
+                        continue;
                     }
                 }
+
+                visibleFiles.Add(file);
             }
-            if (files.Any())
+
+            if (visibleFiles.Any())
             {
-                model.files = files;
+                model.files = visibleFiles;
             }
             return View(model);
 
