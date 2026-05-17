@@ -1,4 +1,5 @@
-﻿using FileHubOrg.Domain.Entities.User;
+﻿using FileHubOrg.Application.Interfaces;
+using FileHubOrg.Domain.Entities.User;
 using FileHubOrg.Infrastructure.Data;
 using FileHubOrg.Web.Models.AccountViewModels;
 using FileHubOrg.Web.Services;
@@ -15,6 +16,7 @@ namespace FileHubOrg.Web.Controllers
     public class AccountController : Controller
     {
 
+        private readonly IApplicationUserService _userService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILdapAuthenticationService _ldapAuthenticationService;
@@ -24,12 +26,14 @@ namespace FileHubOrg.Web.Controllers
         private readonly IWebHostEnvironment _hostingEnvironment;
 
         public AccountController(
+                    IApplicationUserService userService,
                     UserManager<ApplicationUser> userManager,
                     SignInManager<ApplicationUser> signInManager,
                     ILdapAuthenticationService ldapAuthenticationService,
                     ILogger<AccountController> logger,
                     FileHubOrgDbContext context, IWebHostEnvironment hostingEnvironment)
         {
+            _userService = userService;
             _userManager = userManager;
             _signInManager = signInManager;
             _ldapAuthenticationService = ldapAuthenticationService;
@@ -73,6 +77,12 @@ namespace FileHubOrg.Web.Controllers
                 {
                     _logger.LogInformation("User logged in successfully.");
 
+                    var user = await _userManager.FindByNameAsync(model.UserName);
+                    if (user != null)
+                    {
+                        await _userService.RecordUserActivityAsync(user.Id);
+                    }
+
                     return RedirectToLocal(returnUrl);
                 }
 
@@ -94,6 +104,7 @@ namespace FileHubOrg.Web.Controllers
                     if (user != null)
                     {
                         await _signInManager.SignInAsync(user, model.RememberMe);
+                        await _userService.RecordUserActivityAsync(user.Id);
                         _logger.LogInformation("User logged in successfully via LDAP.");
                         return RedirectToLocal(returnUrl);
                     }
@@ -147,6 +158,7 @@ namespace FileHubOrg.Web.Controllers
 
             if (result.Succeeded)
             {
+                await _userService.RecordUserActivityAsync(user.Id);
                 _logger.LogInformation("User with ID {UserId} logged in successfully with 2FA.", user.Id);
 
                 return RedirectToLocal(returnUrl);
@@ -202,6 +214,7 @@ namespace FileHubOrg.Web.Controllers
 
             if (result.Succeeded)
             {
+                await _userService.RecordUserActivityAsync(user.Id);
                 _logger.LogInformation("User with ID {UserId} logged in successfully with a recovery code.", user.Id);
                 return RedirectToLocal(returnUrl);
             }
@@ -269,6 +282,12 @@ namespace FileHubOrg.Web.Controllers
 
             if (result.Succeeded)
             {
+                var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                if (user != null)
+                {
+                    await _userService.RecordUserActivityAsync(user.Id);
+                }
+
                 _logger.LogInformation("User logged in successfully with {Name} provider.", info.LoginProvider);
 
                 return RedirectToLocal(returnUrl);

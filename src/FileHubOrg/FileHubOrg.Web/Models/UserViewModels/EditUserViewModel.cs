@@ -42,6 +42,12 @@ namespace FileHubOrg.Web.Models.UserViewModels
         public double TotalUploadedSizeMB { get; set; } = 0;
         public double UploadUsagePercentage { get; set; } = 0;
 
+        [Display(Name = "Last Login")]
+        public DateTime? LastLoginAt { get; set; }
+
+        [Display(Name = "Last Activity")]
+        public DateTime? LastActivityAt { get; set; }
+
         public IReadOnlyList<Department> Departments { get; set; } = new List<Department>();
     }
 }

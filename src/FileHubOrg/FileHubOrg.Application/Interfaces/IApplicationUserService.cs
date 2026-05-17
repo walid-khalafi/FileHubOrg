@@ -22,6 +22,14 @@ namespace FileHubOrg.Application.Interfaces
         /// <returns>The user profile or null if not found.</returns>
         Task<ApplicationUser?> GetUserProfileAsync(string userId, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Records a user's activity and marks their last login time.
+        /// </summary>
+        /// <param name="userId">The user identifier.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>True if the activity was recorded successfully; otherwise false.</returns>
+        Task<bool> RecordUserActivityAsync(string userId, CancellationToken cancellationToken = default);
+
         Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 
         Task<ApplicationUser?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default);

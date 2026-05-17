@@ -122,6 +122,7 @@
                         <th style="width:48px;"></th>
                         <th>Name</th>
                         <th>Email</th>
+                        <th>Last Activity</th>
                         <th>Status</th>
                         <th>Phone</th>
                         <th style="width:220px;">Department</th>
@@ -143,6 +144,8 @@
                             <td>
                                 <div class="fw-semibold small">@user.FullName</div>
                             </td>
+                            <td class="small text-muted">@user.Email</td>
+                            <td class="small text-muted">@(user.LastActivityAt?.ToString("g") ?? "Never")</td>
                             <td>
                                 @if (user.IsActive)
                                 {
@@ -153,7 +156,6 @@
                                     <span class="badge bg-danger">Inactive</span>
                                 }
                             </td>
-                            <td class="small text-muted">@user.Email</td>
                             <td class="small text-muted">@(user.PhoneNumber ?? "—")</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">

@@ -82,7 +82,37 @@ namespace FileHubOrg.Application.Services
                 Console.WriteLine(ex.Message);
                 return false;
             }
-          
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> RecordUserActivityAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+            }
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                return false;
+            }
+
+            var now = DateTime.UtcNow;
+            user.LastLoginAt = now;
+            user.LastActivityAt = now;
+
+            try
+            {
+                await _unitOfWork.ApplicationUsers.UpdateAsync(user, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
         }
 
         /// <inheritdoc />

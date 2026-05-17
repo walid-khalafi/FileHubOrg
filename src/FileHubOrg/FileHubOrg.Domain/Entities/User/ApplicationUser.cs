@@ -67,5 +67,15 @@ namespace FileHubOrg.Domain.Entities.User
         /// </summary>
         /// <value>The deactivation reason, or empty string.</value>
         public string DeactivationReason { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the last time the user successfully signed in.
+        /// </summary>
+        public DateTime? LastLoginAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the last activity timestamp for the user.
+        /// </summary>
+        public DateTime? LastActivityAt { get; set; }
     }
 }

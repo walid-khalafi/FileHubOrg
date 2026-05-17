@@ -124,6 +124,14 @@
                                 @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "—" : Model.PhoneNumber)
                             </div>
                         </div>
+                        <div class="col-sm-6">
+                            <div class="field-label">Last Login</div>
+                            <div class="readonly-field">@(Model.LastLoginAt?.ToString("g") ?? "Never")</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="field-label">Last Activity</div>
+                            <div class="readonly-field">@(Model.LastActivityAt?.ToString("g") ?? "Never")</div>
+                        </div>
                     </div>
                 </div>
             </div>

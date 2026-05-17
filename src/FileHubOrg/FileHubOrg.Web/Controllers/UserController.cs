@@ -267,6 +267,8 @@ namespace FileHubOrg.Web.Controllers
                 UploadedFilesCount       = fileCount,
                 TotalUploadedSizeMB      = totalSizeBytes / (1024.0 * 1024.0),
                 UploadUsagePercentage    = limitBytes.HasValue ? (totalSizeBytes / (double)limitBytes.Value) * 100 : 0,
+                LastLoginAt              = user.LastLoginAt,
+                LastActivityAt           = user.LastActivityAt,
                 Departments              = departments
             };
 
