@@ -122,6 +122,7 @@
                         <th style="width:48px;"></th>
                         <th>Name</th>
                         <th>Email</th>
+                        <th>Status</th>
                         <th>Phone</th>
                         <th style="width:220px;">Department</th>
                         <th style="width:80px;">Actions</th>
@@ -141,6 +142,16 @@
                             </td>
                             <td>
                                 <div class="fw-semibold small">@user.FullName</div>
+                            </td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Inactive</span>
+                                }
                             </td>
                             <td class="small text-muted">@user.Email</td>
                             <td class="small text-muted">@(user.PhoneNumber ?? "—")</td>
@@ -173,11 +184,49 @@
                                 </div>
                             </td>
                             <td>
-                                <a asp-action="Edit" asp-route-id="@user.Id"
-                                   class="btn btn-sm btn-light rounded-pill px-3"
-                                   title="Edit user">
-                                    <i class="fa fa-pen" style="font-size:.75rem;"></i>
-                                </a>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown" aria-expanded="false" title="Manage user">
+                                        <i class="fa fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Edit" asp-route-id="@user.Id">
+                                                <i class="fa fa-pen me-2 text-primary"></i> Edit
+                                            </a>
+                                        </li>
+                                        @if (user.IsActive)
+                                        {
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="confirmDeactivateUser('@user.Id', '@Html.Raw((user.FullName ?? user.Email ?? "").Replace("'", "\\'"))'); return false;">
+                                                    <i class="fa fa-user-slash me-2 text-warning"></i> Deactivate
+                                                </a>
+                                            </li>
+                                        }
+                                        else
+                                        {
+                                            <li>
+                                                <a class="dropdown-item" href="#"
+                                                   onclick="reactivateUser('@user.Id'); return false;">
+                                                    <i class="fa fa-user-check me-2 text-success"></i> Reactivate
+                                                </a>
+                                            </li>
+                                        }
+                                        <li>
+                                            <a class="dropdown-item" asp-action="ResetPassword" asp-route-id="@user.Id">
+                                                <i class="fa fa-key me-2 text-info"></i> Reset Password
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#"
+                                               onclick="confirmDeleteUser('@user.Id', '@Html.Raw((user.FullName ?? user.Email ?? "").Replace("'", "\\'"))'); return false;">
+                                                <i class="fa fa-trash me-2"></i> Remove
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -251,6 +300,75 @@ function saveDepartment(userId) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="fa fa-check"></i>';
         showToast('Failed to update department.', 'danger');
+    });
+}
+
+function confirmDeleteUser(userId, userName) {
+    if (!confirm('Remove user "' + userName + '" from the system? This action cannot be undone.')) {
+        return;
+    }
+    deleteUser(userId);
+}
+
+function deleteUser(userId) {
+    fetch('/User/DeleteUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId })
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(data) { throw new Error(data.message || 'Failed to delete user.'); });
+        return r.json();
+    })
+    .then(function(data) {
+        showToast(data.message || 'User removed successfully.');
+        location.reload();
+    })
+    .catch(function(error) {
+        showToast(error.message || 'Failed to delete user.', 'danger');
+    });
+}
+
+function confirmDeactivateUser(userId, userName) {
+    var reason = prompt('Why are you deactivating ' + userName + '?');
+    if (!reason) {
+        return;
+    }
+
+    fetch('/User/DeactivateAccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId, reason: reason })
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(data) { throw new Error(data.message || 'Failed to deactivate user.'); });
+        return r.json();
+    })
+    .then(function(data) {
+        showToast(data.message || 'User deactivated successfully.');
+        location.reload();
+    })
+    .catch(function(error) {
+        showToast(error.message || 'Failed to deactivate user.', 'danger');
+    });
+}
+
+function reactivateUser(userId) {
+    fetch('/User/ReactivateAccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId })
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(data) { throw new Error(data.message || 'Failed to reactivate user.'); });
+        return r.json();
+    })
+    .then(function(data) {
+        showToast(data.message || 'User reactivated successfully.');
+        location.reload();
+    })
+    .catch(function(error) {
+        showToast(error.message || 'Failed to reactivate user.', 'danger');
     });
 }
 

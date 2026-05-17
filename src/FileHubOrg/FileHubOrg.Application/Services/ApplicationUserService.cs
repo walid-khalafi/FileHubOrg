@@ -199,6 +199,39 @@ namespace FileHubOrg.Application.Services
         }
 
         /// <inheritdoc />
+        public async Task<IdentityResult> ResetUserPasswordAsync(string userId, string newPassword, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+            if (string.IsNullOrWhiteSpace(newPassword))
+                throw new ArgumentException("New password cannot be null or empty.", nameof(newPassword));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            return await _userManager.ResetPasswordAsync(user, token, newPassword);
+        }
+
+        /// <inheritdoc />
+        public async Task<IdentityResult> DeleteUserAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+
+            var user = await _unitOfWork.ApplicationUsers.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+            }
+
+            return await _userManager.DeleteAsync(user);
+        }
+
+        /// <inheritdoc />
         public async Task<ApplicationUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(email))

@@ -32,6 +32,8 @@ namespace FileHubOrg.Application.Interfaces
 
         Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken = default);
 
+        Task<IdentityResult> ResetUserPasswordAsync(string userId, string newPassword, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Updates a user's full name.
         /// </summary>
@@ -91,6 +93,8 @@ namespace FileHubOrg.Application.Interfaces
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>True if the operation was successful; otherwise, false.</returns>
         Task<bool> ReactivateUserAsync(string userId, CancellationToken cancellationToken = default);
+
+        Task<IdentityResult> DeleteUserAsync(string userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets user statistics including upload usage information.

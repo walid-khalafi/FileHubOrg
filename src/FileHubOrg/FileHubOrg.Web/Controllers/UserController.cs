@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace FileHubOrg.Web.Controllers
 {
@@ -120,6 +121,48 @@ namespace FileHubOrg.Web.Controllers
             };
 
             return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ResetPassword(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest();
+
+            var user = await _userService.GetUserProfileAsync(id);
+            if (user == null)
+                return NotFound();
+
+            var model = new ResetUserPasswordViewModel
+            {
+                UserId = user.Id,
+                Email = user.Email ?? string.Empty
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetUserPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var resetResult = await _userService.ResetUserPasswordAsync(model.UserId, model.Password);
+            if (!resetResult.Succeeded)
+            {
+                foreach (var error in resetResult.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                }
+                return View(model);
+            }
+
+            TempData["success_msg"] = "Password was reset successfully.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -327,6 +370,23 @@ namespace FileHubOrg.Web.Controllers
             return Ok(new { message = "User account reactivated successfully." });
         }
 
+        // POST /User/DeleteUser (AJAX)
+        [HttpPost]
+        public async Task<IActionResult> DeleteUser([FromBody] DeleteUserRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                return BadRequest(new { message = "Invalid user ID." });
+
+            var result = await _userService.DeleteUserAsync(request.UserId);
+            if (!result.Succeeded)
+            {
+                var errorMessage = result.Errors.FirstOrDefault()?.Description ?? "Failed to delete user.";
+                return StatusCode(500, new { message = errorMessage });
+            }
+
+            return Ok(new { message = "User deleted successfully." });
+        }
+
         // GET /User/GetUploadStats/{id} (AJAX)
         [HttpGet]
         public async Task<IActionResult> GetUploadStats(string id)
@@ -371,6 +431,11 @@ namespace FileHubOrg.Web.Controllers
     }
 
     public class ReactivateAccountRequest
+    {
+        public string UserId { get; set; } = string.Empty;
+    }
+
+    public class DeleteUserRequest
     {
         public string UserId { get; set; } = string.Empty;
     }
