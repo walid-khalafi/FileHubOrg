@@ -1,10 +1,12 @@
 ﻿using FileHubOrg.Domain.Entities.User;
 using FileHubOrg.Infrastructure.Data;
 using FileHubOrg.Web.Models.AccountViewModels;
+using FileHubOrg.Web.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -15,6 +17,7 @@ namespace FileHubOrg.Web.Controllers
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ILdapAuthenticationService _ldapAuthenticationService;
 
         private readonly ILogger _logger;
         private readonly FileHubOrgDbContext _context;
@@ -23,11 +26,13 @@ namespace FileHubOrg.Web.Controllers
         public AccountController(
                     UserManager<ApplicationUser> userManager,
                     SignInManager<ApplicationUser> signInManager,
+                    ILdapAuthenticationService ldapAuthenticationService,
                     ILogger<AccountController> logger,
                     FileHubOrgDbContext context, IWebHostEnvironment hostingEnvironment)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _ldapAuthenticationService = ldapAuthenticationService;
             _logger = logger;
             _context = context;
             _hostingEnvironment = hostingEnvironment;
@@ -81,11 +86,21 @@ namespace FileHubOrg.Web.Controllers
                     _logger.LogWarning("User account locked out due to multiple failed login attempts.");
                     return RedirectToAction(nameof(Lockout));
                 }
-                else
+
+                var ldapUser = await _ldapAuthenticationService.AuthenticateAsync(model.UserName, model.Password);
+                if (ldapUser != null)
                 {
-                    ModelState.AddModelError(string.Empty, "Invalid username or password. Please check your credentials and try again.");
-                    return View(model);
+                    var user = await GetOrCreateLdapUserAsync(ldapUser);
+                    if (user != null)
+                    {
+                        await _signInManager.SignInAsync(user, model.RememberMe);
+                        _logger.LogInformation("User logged in successfully via LDAP.");
+                        return RedirectToLocal(returnUrl);
+                    }
                 }
+
+                ModelState.AddModelError(string.Empty, "Invalid username or password. Please check your credentials and try again.");
+                return View(model);
             }
 
             _logger.LogWarning("Invalid login attempt due to invalid model state.");
@@ -436,6 +451,140 @@ namespace FileHubOrg.Web.Controllers
         public IActionResult AccessDenied()
         {
             return View();
+        }
+
+        private async Task<ApplicationUser?> GetOrCreateLdapUserAsync(LdapUserInfo ldapUser)
+        {
+            var user = await _userManager.FindByNameAsync(ldapUser.UserName);
+
+            if (user == null && !string.IsNullOrWhiteSpace(ldapUser.Email))
+            {
+                user = await _userManager.FindByEmailAsync(ldapUser.Email);
+            }
+
+            if (user == null)
+            {
+                var (firstName, lastName) = SplitDisplayName(ldapUser.DisplayName);
+                user = new ApplicationUser
+                {
+                    UserName = ldapUser.UserName,
+                    Email = $"{ldapUser.UserName}@filehuborg.com",
+                    EmailConfirmed = !string.IsNullOrWhiteSpace(ldapUser.Email),
+                    FirstName = firstName,
+                    LastName = lastName
+                };
+
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    _logger.LogWarning("Unable to create local user account for LDAP user {UserName}. Errors: {Errors}", ldapUser.UserName, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    return null;
+                }
+
+                var role = _context.Roles.FirstOrDefault(x => x.Name == "Client");
+                if (role == null)
+                {
+                    _context.Roles.Add(new ApplicationRole
+                    {
+                        ConcurrencyStamp = Guid.NewGuid().ToString(),
+                        Id = Guid.NewGuid().ToString(),
+                        Name = "Client",
+                        NormalizedName = "CLIENT",
+                    });
+                    _context.SaveChanges();
+                }
+
+                await _userManager.AddToRoleAsync(user, "Client");
+            }
+
+            // Assign user to department based on LDAP OU
+            await AssignUserToDepartmentByOUAsync(user, ldapUser.DistinguishedName);
+
+            var logins = await _userManager.GetLoginsAsync(user);
+            if (!logins.Any(x => x.LoginProvider == "LDAP" && x.ProviderKey == ldapUser.UserName))
+            {
+                await _userManager.AddLoginAsync(user, new UserLoginInfo("LDAP", ldapUser.UserName, "LDAP"));
+            }
+
+            return user;
+        }
+
+        private static (string FirstName, string LastName) SplitDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                return (string.Empty, string.Empty);
+            }
+
+            var parts = displayName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1)
+            {
+                return (parts[0], string.Empty);
+            }
+
+            return (parts[0], string.Join(' ', parts.Skip(1)));
+        }
+
+        private async Task AssignUserToDepartmentByOUAsync(ApplicationUser user, string distinguishedName)
+        {
+            try
+            {
+                var ouName = ExtractOUFromDN(distinguishedName);
+                if (string.IsNullOrWhiteSpace(ouName))
+                {
+                    _logger.LogWarning("Could not extract OU from DN: {DN}", distinguishedName);
+                    return;
+                }
+
+                var department = _context.Departments.FirstOrDefault(d => d.Name == ouName);
+                if (department == null)
+                {
+                    department = new Domain.Entities.Organization.Department
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = ouName,
+                        CreatedBy = "System",
+                        CreatedByIP = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown"
+                    };
+                    _context.Departments.Add(department);
+                    _context.SaveChanges();
+                    _logger.LogInformation("Created new department from LDAP OU: {DepartmentName}", ouName);
+                }
+
+                if (user.DepartmentId != department.Id)
+                {
+                    user.DepartmentId = department.Id;
+                    await _userManager.UpdateAsync(user);
+                    _logger.LogInformation("Assigned user {UserName} to department {DepartmentName}", user.UserName, department.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning user {UserName} to department based on OU", user.UserName);
+            }
+        }
+
+        private static string ExtractOUFromDN(string distinguishedName)
+        {
+            if (string.IsNullOrWhiteSpace(distinguishedName))
+            {
+                return string.Empty;
+            }
+
+            // DN format: CN=username,OU=Department,OU=SubOU,DC=example,DC=com
+            // We want to extract the first OU (the immediate organizational unit)
+            var parts = distinguishedName.Split(',');
+            foreach (var part in parts)
+            {
+                var trimmed = part.Trim();
+                if (trimmed.StartsWith("OU=", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Extract the value after "OU="
+                    return trimmed.Substring(3);
+                }
+            }
+
+            return string.Empty;
         }
 
         #region Helpers

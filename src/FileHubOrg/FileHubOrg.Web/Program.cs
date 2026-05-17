@@ -4,6 +4,7 @@ using FileHubOrg.Domain.Interfaces;
 using FileHubOrg.Infrastructure.Data;
 using FileHubOrg.Infrastructure.Persistence.Seeders;
 using FileHubOrg.Infrastructure.Repositories;
+using FileHubOrg.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
+builder.Services.Configure<LdapSettings>(builder.Configuration.GetSection("Ldap"));
+builder.Services.AddScoped<ILdapAuthenticationService, LdapAuthenticationService>();
+
 // HttpContextAccessor for accessing HTTP context in services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
@@ -137,6 +141,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

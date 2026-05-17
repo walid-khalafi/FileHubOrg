@@ -16,13 +16,22 @@ services:
       - "8080:80"
 
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_URLS: http://+:80
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      ASPNETCORE_URLS: "${ASPNETCORE_URLS:-http://+:80}"
 
       ConnectionStrings__DefaultConnection: "${DEFAULT_CONNECTION}"
       Jwt__Secret: "${JWT__SECRET}"
-      Ldap__BindCredentials: "${LDAP__BINDCREDENTIALS}"
       Ldap__Url: "${LDAP__URL}"
+      Ldap__Port: "${LDAP__PORT:-389}"
+      Ldap__UseSsl: "${LDAP__USESSL:-false}"
+      Ldap__BindOn: "${LDAP__BINDON}"
+      Ldap__BindCredentials: "${LDAP__BINDCREDENTIALS}"
+      Ldap__SearchBase: "${LDAP__SEARCHBASE}"
+      Ldap__SearchFilter: "${LDAP__SEARCHFILTER}"
+      Ldap__UIDAttribute: "${LDAP__UIDATTRIBUTE}"
+      Ldap__SAMAccountNameAttribute: "${LDAP__SAMACCOUNTNAMEATTRIBUTE}"
+      Ldap__DisplayNameAttribute: "${LDAP__DISPLAYNAMEATTRIBUTE}"
+      Ldap__EmailNameAttribute: "${LDAP__EMAILNAMEATTRIBUTE}"
 
     depends_on:
       - db
