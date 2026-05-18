@@ -516,10 +516,18 @@ namespace FileHubOrg.Web.Controllers
                 await _userManager.AddToRoleAsync(user, "Client");
             }
 
-            // Assign user to department based on LDAP OU
-            await AssignUserToDepartmentByOUAsync(user, ldapUser.DistinguishedName);
-
+            // Detect first-time LDAP login: if the user does not yet have an LDAP login and
+            // their DepartmentId is not set, assign department based on LDAP OU.
             var logins = await _userManager.GetLoginsAsync(user);
+
+
+            var isExistingLdapLogin = logins.Any(x => x.LoginProvider == "LDAP" && x.ProviderKey == ldapUser.UserName);
+
+            if (!isExistingLdapLogin && user.DepartmentId == null)
+            {
+                await AssignUserToDepartmentByOUAsync(user, ldapUser.DistinguishedName);
+            }
+
             if (!logins.Any(x => x.LoginProvider == "LDAP" && x.ProviderKey == ldapUser.UserName))
             {
                 await _userManager.AddLoginAsync(user, new UserLoginInfo("LDAP", ldapUser.UserName, "LDAP"));
