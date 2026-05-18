@@ -203,7 +203,14 @@
                                             </a>
                                         </li>
 
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Audit" asp-route-id="@user.Id">
+                                                <i class="fa fa-shield-halved me-2 text-primary"></i> Audit
+                                            </a>
+                                        </li>
+
                                         @if (user.IsActive)
+
                                         {
                                             <li>
                                                 <a class="dropdown-item" href="#"
