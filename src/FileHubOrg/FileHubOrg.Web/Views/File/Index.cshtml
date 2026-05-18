@@ -490,6 +490,10 @@
         <a href="javascript:;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
             <i class="fa fa-upload me-1"></i> Upload
         </a>
+        <a href="javascript:;" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#uploadShareFileModal">
+            <i class="fa fa-share-alt me-1"></i> Upload and Share
+        </a>
+
     </div>
 
     <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -695,6 +699,7 @@
 
 @* ── Upload File modal ── *@
 <div class="modal fade" id="uploadFileModal" tabindex="-1" aria-hidden="true">
+
     <div class="modal-dialog modal-dialog-centered">
         <form asp-action="UploadFile" method="post" enctype="multipart/form-data"
               class="modal-content rounded-4 shadow" id="uploadForm">
@@ -726,10 +731,46 @@
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
+</div>
+</div>
+
+@* ── Upload and Share modal ── *@
+<div class="modal fade" id="uploadShareFileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content rounded-4 shadow" id="uploadShareForm" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-share-alt me-2"></i> Upload and Share</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="uploadShareDropZone" class="text-center p-4 mb-3"
+                     onclick="document.getElementById('uploadShareFileInput').click()"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                     ondragleave="this.classList.remove('drag-over');"
+                     ondrop="handleUploadShareDrop(event)">
+                    <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
+                    <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                </div>
+                <input type="file" id="uploadShareFileInput" name="file" class="d-none"
+                       onchange="showUploadShareSelectedFile(this)" required />
+                <div id="uploadShareSelectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
+                    <i class="fa fa-paperclip me-1"></i><span id="uploadShareSelectedFileNameText"></span>
+                </div>
+                <input type="hidden" name="labelId" value="@Model.labelId" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="submitUploadShare()">
+                    <i class="fa fa-upload me-1"></i> Upload
+                </button>
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
 @* ── Move File to Label modal ── *@
+
 <div class="modal fade" id="moveLabelModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 shadow">
@@ -1086,6 +1127,7 @@ function uploadDroppedFile(files) {
 
 // ── Upload modal drag & drop ──────────────────────────────────
 function handleModalDrop(e) {
+
     e.preventDefault();
     document.getElementById('modalDropZone').classList.remove('drag-over');
     var files = e.dataTransfer.files;
@@ -1102,6 +1144,81 @@ function showSelectedFile(input) {
         info.style.display = '';
     }
 }
+
+function showUploadShareSelectedFile(input) {
+    var info = document.getElementById('uploadShareSelectedFileInfo');
+    var nameEl = document.getElementById('uploadShareSelectedFileNameText');
+    if (input.files && input.files.length > 0) {
+        nameEl.textContent = input.files[0].name;
+        info.style.display = '';
+    }
+}
+
+function handleUploadShareDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadShareDropZone').classList.remove('drag-over');
+    var files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        document.getElementById('uploadShareFileInput').files = files;
+        showUploadShareSelectedFile(document.getElementById('uploadShareFileInput'));
+    }
+}
+
+function submitUploadShare() {
+    var input = document.getElementById('uploadShareFileInput');
+    if (!input || !input.files || input.files.length === 0) {
+        showToast('Please choose a file first.', 'danger');
+        return;
+    }
+
+    var formEl = document.getElementById('uploadShareForm');
+    var file = input.files[0];
+    var labelIdEl = formEl.querySelector('input[name="labelId"]');
+    var labelId = labelIdEl ? labelIdEl.value : '';
+
+    var tokenEl = formEl.querySelector('input[name="__RequestVerificationToken"]');
+    var antiForgeryToken = tokenEl ? tokenEl.value : '';
+
+    var fd = new FormData();
+    fd.append('file', file);
+    if (labelId) fd.append('labelId', labelId);
+
+    var btn = formEl.querySelector('button[onclick="submitUploadShare()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Uploading...';
+    }
+
+    fetch('/File/UploadFileAndReturnId', {
+        method: 'POST',
+        headers: {
+            'RequestVerificationToken': antiForgeryToken
+        },
+        credentials: 'same-origin',
+        body: fd
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        if (!data || !data.fileId) throw new Error('Invalid response');
+
+        var modalEl = document.getElementById('uploadShareFileModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        openShareModal(data.fileId);
+    })
+    .catch(function() {
+        showToast('Failed to upload file.', 'danger');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-upload me-1"></i> Upload';
+        }
+    });
+}
+
 
 // ── Share modal ───────────────────────────────────────────────
 var _shareData = [];   // flat list of { userId, userName, deptId, deptName }
