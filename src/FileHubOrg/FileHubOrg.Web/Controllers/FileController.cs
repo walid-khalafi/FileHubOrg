@@ -265,41 +265,45 @@ namespace FileHubOrg.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> PreviewViaJwt(string token)
         {
+            if (string.IsNullOrWhiteSpace(token))
+                return BadRequest();
+
             var principal = _jwtService.ValidateDownloadToken(token);
             if (principal == null)
                 return Unauthorized();
 
-            var fileId = Guid.Parse(principal.FindFirst("fileId")?.Value);
+            var fileIdRaw = principal.FindFirst("fileId")?.Value;
             var userId = principal.FindFirst("userId")?.Value;
 
-            if (fileId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
+            if (!Guid.TryParse(fileIdRaw, out var fileId) || fileId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
                 return BadRequest();
 
             var file = await _fileService.GetFileAsync(fileId);
-            if (file == null || !System.IO.File.Exists(Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName)))
+            if (file == null)
                 return NotFound();
 
-            if (!file.CreatedBy.Equals(userId))
+            // Authorization: owner or member of the file.
+            if (!string.Equals(file.CreatedBy, userId, StringComparison.Ordinal))
             {
                 var members = await _fileService.GetFileMembersAsync(userId, fileId);
-                var isCurrentUserIsMember = members.Any(x => x.AssignedToId.Equals(userId));
+                var isCurrentUserIsMember = members.Any(x => string.Equals(x.AssignedToId, userId, StringComparison.Ordinal));
                 if (!isCurrentUserIsMember)
-                {
                     return Forbid();
-                }
-            }
-
-            var dbToken = await _jwtService.GetDownloadTokenAsync(token);
-            if (dbToken == null)
-            {
-                return NotFound();
             }
 
             var filePath = Path.Combine(_fileService.GetRootPath(), file.CreatedBy, file.OrginalName);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+
             var contentType = GetContentType(file.OrginalName);
+
             Response.Headers["Content-Disposition"] = $"inline; filename=\"{file.OrginalName}\"";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+
+            // For browsers, setting Content-Type correctly is the main requirement.
             return PhysicalFile(filePath, contentType);
         }
+
 
         [NonAction]
         private string GetContentType(string fileName)
