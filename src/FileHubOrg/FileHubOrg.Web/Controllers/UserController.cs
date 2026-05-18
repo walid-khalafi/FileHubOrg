@@ -1,7 +1,13 @@
 using FileHubOrg.Application.Interfaces;
 using FileHubOrg.Domain.Entities.User;
+using FileHubOrg.Domain.Entities.File;
+
 using FileHubOrg.Web.Models.AccountViewModels;
 using FileHubOrg.Web.Models.UserViewModels;
+
+
+
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,17 +21,21 @@ namespace FileHubOrg.Web.Controllers
     {
         private readonly IApplicationUserService _userService;
         private readonly IDepartmentService _departmentService;
+        private readonly IFileService _fileService;
         private readonly ILogger<UserController> _logger;
 
         public UserController(
             IApplicationUserService userService,
             IDepartmentService departmentService,
+            IFileService fileService,
             ILogger<UserController> logger)
         {
             _userService = userService;
             _departmentService = departmentService;
+            _fileService = fileService;
             _logger = logger;
         }
+
 
         // GET /User
         public async Task<IActionResult> Index()
@@ -82,75 +92,70 @@ namespace FileHubOrg.Web.Controllers
             return View(model);
         }
 
-
+        // GET /User/Audit/{id}
         [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public IActionResult Register(string returnUrl = "")
+        public async Task<IActionResult> Audit(string id)
         {
-            ViewData["ReturnUrl"] = returnUrl;
-            return View();
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest();
+
+            var user = await _userService.GetUserProfileAsync(id);
+            if (user == null)
+                return NotFound();
+
+            // Upload logs: files created by this user.
+            var uploads = await _fileService.GetFilesAsync(user.Id);
+
+            var uploadLogs = (uploads ?? new List<FileMetaData>())
+                .Select(f => new AuditLogItemViewModel
+                {
+                    CreatedAt = f.CreatedAt,
+                    ActorUserId = f.CreatedBy,
+                    ActorFullName = f.CreatedBy,
+                    IpAddress = string.IsNullOrWhiteSpace(f.CreatedByIP) ? "—" : f.CreatedByIP,
+                    FileId = f.Id,
+                    FileName = f.OrginalName ?? "(no name)"
+                })
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+
+            // Share logs: file members where this user is the assigned (shared-to) user.
+            // We build candidate files from files visible for this user and then filter memberships.
+            var shareCandidates = await _fileService.GetFilesAsync(user.Id);
+            var shareLogs = new List<AuditLogItemViewModel>();
+
+            foreach (var file in shareCandidates ?? new List<FileMetaData>())
+            {
+                var members = await _fileService.GetFileMembersAsync(user.Id, file.Id);
+                foreach (var m in members)
+                {
+                    if (!string.Equals(m.AssignedToId, user.Id, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    shareLogs.Add(new AuditLogItemViewModel
+                    {
+                        CreatedAt = m.CreatedAt,
+                        ActorUserId = m.CreatedBy,
+                        ActorFullName = m.CreatedBy,
+                        IpAddress = string.IsNullOrWhiteSpace(m.CreatedByIP) ? "—" : m.CreatedByIP,
+                        FileId = file.Id,
+                        FileName = file.OrginalName ?? "(no name)",
+                        SharedToUserId = m.AssignedToId,
+                        SharedToFullName = m.AssignedTo?.FullName ?? m.AssignedToId
+                    });
+                }
+            }
+
+            return View(new UserAuditLogViewModel
+            {
+                UserId = user.Id,
+                FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
+                UploadLogs = uploadLogs,
+                ShareLogs = shareLogs.OrderByDescending(x => x.CreatedAt).ToList()
+            });
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Admin")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(RegisterViewModel model, string returnUrl = "")
-        {
-            ViewData["ReturnUrl"] = returnUrl;
-
-            if (!ModelState.IsValid)
-            {
-                TempData["error_msg"] = "Please correct the errors in the registration form and try again.";
-                return View(model);
-            }
-
-            try
-            {
-                var existingUserByPhone = await _userService.GetByPhoneNumberAsync(model.PhoneNumber);
-                if (existingUserByPhone != null)
-                {
-                    TempData["error_msg"] = "This phone number is already registered. If you've forgotten your password, please use the password recovery option.";
-                    return View(model);
-                }
-
-                var existingUserByEmail = await _userService.GetByEmailAsync(model.Email);
-                if (existingUserByEmail != null)
-                {
-                    TempData["error_msg"] = "This email address is already registered. If you've forgotten your password, please use the password recovery option.";
-                    return View(model);
-                }
-
-                var newUser = new ApplicationUser
-                {
-                    FirstName = model.FirstName,
-                    LastName = model.LastName,
-                    UserName = model.Email,
-                    Email = model.Email,
-                    PhoneNumber = model.PhoneNumber
-                };
-
-                var createResult = await _userService.CreateUserAsync(newUser, model.Password);
-
-                if (createResult.Succeeded)
-                {
-                    await _userService.EnsureRoleExistsAsync("Client", "Client", "Standard client user role");
-                    await _userService.AddToRoleAsync(newUser, "Client");
-                    _logger.LogInformation("New user account created successfully for user: {UserId}", newUser.Id);
-                    TempData["success_msg"] = "Registration successful! Please check your email for account activation instructions.";
-                    return RedirectToAction("Index");
-                }
-
-                AddErrors(createResult);
-                TempData["error_msg"] = "Registration failed. Please review the errors below and try again.";
-                return View(model);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred during user registration");
-                TempData["error_msg"] = "An unexpected error occurred during registration. Please try again later.";
-                return View(model);
-            }
-        }
 
         [HttpGet]
         public async Task<IActionResult> Create()
