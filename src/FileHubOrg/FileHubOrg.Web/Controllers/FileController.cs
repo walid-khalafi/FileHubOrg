@@ -1,6 +1,8 @@
 ﻿using FileHubOrg.Application.Interfaces;
 using FileHubOrg.Domain.Entities.File;
 using FileHubOrg.Web.Models.FileViewModels;
+
+
 using FileHubOrg.Web.Models.LabelViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -131,7 +133,6 @@ namespace FileHubOrg.Web.Controllers
         {
             var userId = GetUserId();
 
-
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "فایلی انتخاب نشده است.";
@@ -139,6 +140,9 @@ namespace FileHubOrg.Web.Controllers
             }
 
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+
+
 
             var fileRecord = new FileMetaData
             {
@@ -168,10 +172,44 @@ namespace FileHubOrg.Web.Controllers
             return RedirectToAction("Index", "File", new { id = labelId });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadFileAndReturnId(IFormFile file, Guid? labelId)
+        {
+            var userId = GetUserId();
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("File not selected");
+            }
+
+            var fileRecord = new FileMetaData
+            {
+                OrginalName = file.FileName,
+                Size = file.Length,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIP = "",
+                LabelId = labelId
+            };
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                await _fileService.UploadFileAsync(fileRecord, stream);
+
+                return Ok(new UploadFileResultModel { FileId = fileRecord.Id });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> GenerateDownloadToken([FromBody] Guid fileId)
         {
+
             var userId = GetUserId();
 
             var file = await _fileService.GetFileAsync(fileId);
