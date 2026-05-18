@@ -66,7 +66,11 @@ namespace FileHubOrg.Application.Services
             {
                 await _unitOfWork.JWTs.AddAsync(jwt);
                 await _unitOfWork.SaveChangesAsync();
-                return new JwtSecurityTokenHandler().WriteToken(token);
+
+                // Return the same JWT string we stored in DB.
+                // This avoids token-string mismatches in GetDownloadTokenAsync.
+                return jwt.Jwt;
+
             }
             catch (Exception ex)
             {
