@@ -70,10 +70,14 @@ namespace FileHubOrg.Application.Services
             }
             catch (Exception ex)
             {
-
+                // Critical debugging info: surface failures when JWT rows are not inserted.
+                Console.WriteLine("[JWTService] GenerateDownloadJwtAsync failed:");
+                Console.WriteLine($"fileId={fileId}, userId={userId}");
                 Console.WriteLine(ex.ToString());
+
+                return string.Empty;
             }
-            return string.Empty;
+
         }
 
         public ClaimsPrincipal? ValidateDownloadToken(string token)
