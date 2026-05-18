@@ -120,10 +120,66 @@ namespace FileHubOrg.Application.Services
             }
         }
 
-        public Task<bool> DeleteFileAsync(Guid fileId, string userId)
+        public async Task<bool> DeleteFileAsync(Guid fileId, string userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var file = await _unitOfWork.FileMetaData.GetFirstOrDefaultAsync(x => x.Id == fileId);
+                if (file == null) return false;
+
+                // Only owner can delete
+                if (!string.Equals(file.CreatedBy, userId, StringComparison.Ordinal))
+                    return false;
+
+                // Remove DB relations first
+                var members = await _unitOfWork.FileMembers.AsQueryable()
+                    .Where(x => x.FileMetadataId == fileId)
+                    .ToListAsync();
+
+                if (members.Any())
+                {
+                    await _unitOfWork.FileMembers.RemoveRangeAsync(members);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+
+
+                // Delete file from storage (best-effort)
+                var physicalPath = Path.Combine(GetRootPath(), file.CreatedBy ?? string.Empty, file.OrginalName ?? string.Empty);
+                if (!string.IsNullOrWhiteSpace(file.OrginalName))
+                {
+                    try
+                    {
+                        if (System.IO.File.Exists(physicalPath))
+                            System.IO.File.Delete(physicalPath);
+                    }
+                    catch (IOException)
+                    {
+                        // File may still be locked by a running download/preview request.
+                        // We still delete metadata so user can no longer access it.
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Best-effort only
+                    }
+                    catch
+                    {
+                        // Best-effort only
+                    }
+                }
+
+                await _unitOfWork.FileMetaData.RemoveAsync(file);
+
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting file {fileId}: {ex.Message}");
+                return false;
+            }
         }
+
 
         public async Task<bool> RemoveFileMember(Guid fileId, string userId)
         {
