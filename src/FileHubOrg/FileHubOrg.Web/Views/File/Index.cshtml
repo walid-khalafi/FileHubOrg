@@ -433,6 +433,7 @@
         height: auto;
         display: none;
         margin: auto;
+        z-index:9999!important;
     }
     .preview-loading,
     .preview-error {
@@ -1002,6 +1003,7 @@ function openPreviewModal(fileId, fileName) {
     var error = document.getElementById('previewError');
 
     if (title) title.textContent = fileName || 'Preview';
+    // Reset UI state every time modal opens to avoid stale error from previous attempts.
     if (iframe) {
         iframe.src = '';
         iframe.style.display = 'block';
@@ -1014,6 +1016,7 @@ function openPreviewModal(fileId, fileName) {
     if (error) { error.style.display = 'none'; }
 
     fetch('/File/GeneratePreviewToken', {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fileId)
@@ -1025,21 +1028,40 @@ function openPreviewModal(fileId, fileName) {
     .then(function(data) {
         var isImage = isImageFile(fileName);
         if (data.previewUrl) {
+            // Prevent browser caching/reusing previous iframe/image state across modal opens.
+            var finalUrl = data.previewUrl + (data.previewUrl.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+
             if (isImage && image) {
                 if (iframe) iframe.style.display = 'none';
                 image.style.display = 'none';
+
+                // Detach previous handlers to avoid stale calls.
+                image.onload = null;
+                image.onerror = null;
+
                 image.onload = function() {
                     if (loading) loading.style.display = 'none';
                     image.style.display = 'block';
+                    error.style.display = 'none';
                 };
                 image.onerror = function() {
                     if (loading) loading.style.display = 'none';
                     if (error) error.style.display = '';
                 };
-                image.src = data.previewUrl;
+
+                // Force reload
+                image.src = '';
+                // Small sync reflow to help certain browsers.
+                image.getBoundingClientRect();
+                image.src = finalUrl;
             } else if (iframe) {
                 if (image) image.style.display = 'none';
                 iframe.style.display = 'block';
+
+                // Detach previous handlers to avoid stale calls.
+                iframe.onload = null;
+                iframe.onerror = null;
+
                 iframe.onload = function() {
                     if (loading) loading.style.display = 'none';
                 };
@@ -1047,7 +1069,11 @@ function openPreviewModal(fileId, fileName) {
                     if (loading) loading.style.display = 'none';
                     if (error) error.style.display = '';
                 };
-                iframe.src = data.previewUrl;
+
+                // Force deterministic reload: clear src -> reflow -> set src
+                iframe.src = '';
+                iframe.getBoundingClientRect();
+                iframe.src = finalUrl;
             }
         } else {
             throw new Error('Preview URL not returned');
