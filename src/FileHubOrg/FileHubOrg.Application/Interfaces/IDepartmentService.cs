@@ -13,5 +13,9 @@ namespace FileHubOrg.Application.Interfaces
         Task<IReadOnlyList<Department>> GetDepartmentsAsync();
         Task<Department> GetDepartmentsByIdAsync(Guid id);
         Task<List<ApplicationUser>> GetDepartmentUsersAsync(Guid id);
+
+        Task<Department> CreateDepartmentAsync(string name, string createdBy, string createdByIp);
+        Task<bool> UpdateDepartmentAsync(Guid id, string name, string updatedBy, string updatedByIp);
+        Task<bool> DeleteDepartmentAsync(Guid id);
     }
 }

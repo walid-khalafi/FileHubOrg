@@ -107,6 +107,17 @@
         </p>
     </div>
     <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-controller="Department" asp-action="Edit" asp-route-id="@Model.DepartmentId" class="btn btn-xs btn-outline-primary rounded-pill px-3" title="Edit">
+                <i class="fa fa-pen"></i>
+            </a>
+            <form asp-controller="Department" asp-action="Delete" asp-route-id="@Model.DepartmentId" method="post" style="margin:0;" onsubmit="return confirm('Delete this department?');">
+                <button type="submit" class="btn btn-xs btn-outline-danger rounded-pill px-3" title="Delete">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </form>
+        }
         @* Search *@
         <div class="member-search-wrap">
             <i class="fa fa-search"></i>

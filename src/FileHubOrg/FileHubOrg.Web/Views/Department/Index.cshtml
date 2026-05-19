@@ -56,6 +56,24 @@
     </div>
 </div>
 
+@* ── Top action bar ── *@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div class="btn-group">
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-controller="Department" asp-action="Create" class="btn btn-sm btn-primary rounded-pill px-3">
+                <i class="fa fa-plus me-1"></i> New Department
+            </a>
+        }
+
+    </div>
+
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+     
+
+    </div>
+</div>
+
 @* ── Department grid ── *@
 @if (Model.Departments.Any())
 {
