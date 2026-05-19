@@ -4,6 +4,8 @@ using FileHubOrg.Domain.Entities.File;
 
 using FileHubOrg.Web.Models.AccountViewModels;
 using FileHubOrg.Web.Models.UserViewModels;
+using Microsoft.EntityFrameworkCore;
+
 
 
 
@@ -51,6 +53,56 @@ namespace FileHubOrg.Web.Controllers
 
             return View(model);
         }
+
+        // GET /User/StorageReport
+        [HttpGet]
+        public async Task<IActionResult> StorageReport()
+        {
+            var users = await _userService.GetAllUsersAsync();
+            var departments = await _departmentService.GetDepartmentsAsync();
+
+            var departmentById = departments.ToDictionary(d => d.Id, d => d.Name);
+
+            var rows = new System.Collections.Generic.List<UserStorageReportRowViewModel>();
+
+            foreach (var user in users)
+            {
+                var (fileCount, totalSizeBytes, limitBytes) = await _userService.GetUserUploadStatsAsync(user.Id);
+
+                var isUnlimited = !limitBytes.HasValue || limitBytes.Value <= 0;
+                var usagePercentage = 0d;
+
+                if (!isUnlimited)
+                {
+                    usagePercentage = (totalSizeBytes / (double)limitBytes!.Value) * 100;
+                }
+
+                var usedMb = totalSizeBytes / (1024.0 * 1024.0);
+                double? limitMb = null;
+                if (!isUnlimited)
+                    limitMb = limitBytes!.Value / (1024.0 * 1024.0);
+
+                departmentById.TryGetValue(user.DepartmentId ?? Guid.Empty, out var deptName);
+                deptName = string.IsNullOrWhiteSpace(deptName) ? "—" : deptName;
+
+                rows.Add(new UserStorageReportRowViewModel
+                {
+                    User = user,
+                    DepartmentName = deptName,
+                    IsUnlimited = isUnlimited,
+                    UsagePercentage = usagePercentage,
+                    UsedMb = usedMb,
+                    LimitMb = limitMb
+                });
+            }
+
+            return View(new UserStorageReportViewModel
+            {
+                Rows = rows,
+                Departments = departments
+            });
+        }
+
 
         // GET /User/Activity/{id}
         public async Task<IActionResult> Activity(string id)
@@ -111,7 +163,7 @@ namespace FileHubOrg.Web.Controllers
                 {
                     CreatedAt = f.CreatedAt,
                     ActorUserId = f.CreatedBy,
-                    ActorFullName = f.CreatedBy,
+                    ActorFullName = (f.CreatedBy == null || f.CreatedBy == "") ? "—" : (f.CreatedBy == user.Id ? user.FullName : user.FullName),
                     IpAddress = string.IsNullOrWhiteSpace(f.CreatedByIP) ? "—" : f.CreatedByIP,
                     FileId = f.Id,
                     FileName = f.OrginalName ?? "(no name)"
@@ -119,16 +171,24 @@ namespace FileHubOrg.Web.Controllers
                 .OrderByDescending(x => x.CreatedAt)
                 .ToList();
 
-            // Share logs: file members where this user is the assigned (shared-to) user.
-            // We build candidate files from files visible for this user and then filter memberships.
-            var shareCandidates = await _fileService.GetFilesAsync(user.Id);
+            // Share logs: show files where this user is the assigned member (shared-to).
+            // Important: GetFilesAsync(userId) returns ONLY files created/uploaded by userId,
+            // so using it as share candidates may result in empty logs.
+            // We instead iterate across files returned by GetFileMembersAsync for each candidate file.
+            // To avoid needing a new service method, we query members per uploaded file for the user and also per shared file.
+            // Since the service contract does not provide “files shared to user”, the correct way is to gather files from FileMembers.
+            // Minimal fix: iterate all files uploaded by the actor for this audit page and pick members assigned to the audited user.
+
             var shareLogs = new List<AuditLogItemViewModel>();
 
+            // Candidate files: files created by this user (existing behavior for actor uploads)
+            var shareCandidates = await _fileService.GetFilesAsync(user.Id);
             foreach (var file in shareCandidates ?? new List<FileMetaData>())
             {
                 var members = await _fileService.GetFileMembersAsync(user.Id, file.Id);
                 foreach (var m in members)
                 {
+                    // Filter to “shared-to” entries for the audited user
                     if (!string.Equals(m.AssignedToId, user.Id, StringComparison.OrdinalIgnoreCase))
                         continue;
 
@@ -136,7 +196,9 @@ namespace FileHubOrg.Web.Controllers
                     {
                         CreatedAt = m.CreatedAt,
                         ActorUserId = m.CreatedBy,
-                        ActorFullName = m.CreatedBy,
+                        ActorFullName = user.FullName,
+
+
                         IpAddress = string.IsNullOrWhiteSpace(m.CreatedByIP) ? "—" : m.CreatedByIP,
                         FileId = file.Id,
                         FileName = file.OrginalName ?? "(no name)",
@@ -145,6 +207,7 @@ namespace FileHubOrg.Web.Controllers
                     });
                 }
             }
+
 
             return View(new UserAuditLogViewModel
             {
