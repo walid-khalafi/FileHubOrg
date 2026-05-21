@@ -109,6 +109,10 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Chunked upload (in-memory sessions)
+builder.Services.AddSingleton<FileHubOrg.Application.Interfaces.IChunkedUploadSessionStore, FileHubOrg.Application.Services.ChunkedUpload.InMemoryChunkedUploadSessionStore>();
+builder.Services.AddScoped<FileHubOrg.Application.Interfaces.IChunkedUploadService, FileHubOrg.Application.Services.ChunkedUploadService>();
+
 var app = builder.Build();
 
 

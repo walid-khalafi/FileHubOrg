@@ -24,6 +24,16 @@
     .form-check-label.text-truncate { max-width: 190px; }
     #toastContainer { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; min-width: 260px; }
 
+    /* ── Upload progress ── */
+    .upload-file-icon-sm {
+        width: 38px; height: 38px; border-radius: 9px;
+        background: #f3f4f6; display: flex; align-items: center;
+        justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+    }
+    #uploadOnlyProgressBar, #uploadShareProgressBar {
+        transition: width .3s ease;
+    }
+
     /* ── Share modal ── */
     .share-modal-content {
         border: none;
@@ -700,39 +710,64 @@
 
 @* ── Upload File modal ── *@
 <div class="modal fade" id="uploadFileModal" tabindex="-1" aria-hidden="true">
-
     <div class="modal-dialog modal-dialog-centered">
         <form asp-action="UploadFile" method="post" enctype="multipart/form-data"
               class="modal-content rounded-4 shadow" id="uploadForm">
             @Html.AntiForgeryToken()
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-upload me-2"></i> Upload File</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="uploadOnlyCloseBtn"></button>
             </div>
             <div class="modal-body">
-                <div id="modalDropZone" class="text-center p-4 mb-3"
-                     onclick="document.getElementById('modalFileInput').click()"
-                     ondragover="event.preventDefault(); this.classList.add('drag-over');"
-                     ondragleave="this.classList.remove('drag-over');"
-                     ondrop="handleModalDrop(event)">
-                    <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
-                    <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                @* ── Drop zone (hidden while uploading) ── *@
+                <div id="uploadOnlyPickerArea">
+                    <div id="modalDropZone" class="text-center p-4 mb-3"
+                         onclick="document.getElementById('modalFileInput').click()"
+                         ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                         ondragleave="this.classList.remove('drag-over');"
+                         ondrop="handleModalDrop(event)">
+                        <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
+                        <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                    </div>
+                    <input type="file" id="modalFileInput" name="file" class="d-none"
+                           onchange="showSelectedFile(this)" required />
+                    <div id="selectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
+                        <i class="fa fa-paperclip me-1"></i><span id="selectedFileNameText"></span>
+                    </div>
+                    <input type="hidden" name="labelId" value="@Model.labelId" />
                 </div>
-                <input type="file" id="modalFileInput" name="file" class="d-none"
-                       onchange="showSelectedFile(this)" required />
-                <div id="selectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
-                    <i class="fa fa-paperclip me-1"></i><span id="selectedFileNameText"></span>
+
+                @* ── Progress area (shown while uploading) ── *@
+                <div id="uploadOnlyProgressWrap" style="display:none;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="upload-file-icon-sm" id="uploadOnlyFileIcon">
+                            <i class="fa fa-file text-secondary"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-semibold small text-truncate" id="uploadOnlyFileName"></div>
+                            <div class="text-muted" style="font-size:.72rem;" id="uploadOnlyProgressText">Preparing…</div>
+                        </div>
+                        <div class="fw-bold small text-primary" id="uploadOnlyPct">0%</div>
+                    </div>
+                    <div class="progress rounded-pill" style="height:8px;">
+                        <div id="uploadOnlyProgressBar"
+                             class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width:0%"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="text-muted text-center mt-3" style="font-size:.75rem;">
+                        Please keep this window open until the upload completes.
+                    </div>
                 </div>
-                <input type="hidden" name="labelId" value="@Model.labelId" />
             </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <div class="modal-footer" id="uploadOnlyFooter">
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="uploadOnlyBtn" onclick="submitUploadOnly()">
                     <i class="fa fa-upload me-1"></i> Upload
                 </button>
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
-</div>
+    </div>
 </div>
 
 @* ── Upload and Share modal ── *@
@@ -742,32 +777,59 @@
             @Html.AntiForgeryToken()
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-share-alt me-2"></i> Upload and Share</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="uploadShareCloseBtn"></button>
             </div>
             <div class="modal-body">
-                <div id="uploadShareDropZone" class="text-center p-4 mb-3"
-                     onclick="document.getElementById('uploadShareFileInput').click()"
-                     ondragover="event.preventDefault(); this.classList.add('drag-over');"
-                     ondragleave="this.classList.remove('drag-over');"
-                     ondrop="handleUploadShareDrop(event)">
-                    <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
-                    <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                @* ── Drop zone (hidden while uploading) ── *@
+                <div id="uploadSharePickerArea">
+                    <div id="uploadShareDropZone" class="text-center p-4 mb-3"
+                         onclick="document.getElementById('uploadShareFileInput').click()"
+                         ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                         ondragleave="this.classList.remove('drag-over');"
+                         ondrop="handleUploadShareDrop(event)">
+                        <i class="fa fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
+                        <span class="text-muted small">Drag &amp; drop or <span class="text-primary">browse</span></span>
+                    </div>
+                    <input type="file" id="uploadShareFileInput" name="file" class="d-none"
+                           onchange="showUploadShareSelectedFile(this)" required />
+                    <div id="uploadShareSelectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
+                        <i class="fa fa-paperclip me-1"></i><span id="uploadShareSelectedFileNameText"></span>
+                    </div>
+                    <input type="hidden" name="labelId" value="@Model.labelId" />
                 </div>
-                <input type="file" id="uploadShareFileInput" name="file" class="d-none"
-                       onchange="showUploadShareSelectedFile(this)" required />
-                <div id="uploadShareSelectedFileInfo" class="alert alert-light py-2 small" style="display:none;">
-                    <i class="fa fa-paperclip me-1"></i><span id="uploadShareSelectedFileNameText"></span>
+
+                @* ── Progress area (shown while uploading) ── *@
+                <div id="uploadShareProgressWrap" style="display:none;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="upload-file-icon-sm" id="uploadShareFileIcon">
+                            <i class="fa fa-file text-secondary"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-semibold small text-truncate" id="uploadShareFileName"></div>
+                            <div class="text-muted" style="font-size:.72rem;" id="uploadShareProgressText">Preparing…</div>
+                        </div>
+                        <div class="fw-bold small text-primary" id="uploadSharePct">0%</div>
+                    </div>
+                    <div class="progress rounded-pill" style="height:8px;">
+                        <div id="uploadShareProgressBar"
+                             class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width:0%"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="text-muted text-center mt-3" style="font-size:.75rem;">
+                        Please keep this window open until the upload completes.
+                    </div>
                 </div>
-                <input type="hidden" name="labelId" value="@Model.labelId" />
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="submitUploadShare()">
+            <div class="modal-footer" id="uploadShareFooter">
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="uploadShareBtn" onclick="submitUploadShare()">
                     <i class="fa fa-upload me-1"></i> Upload
                 </button>
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
             </div>
         </form>
     </div>
+</div>
 </div>
 
 @* ── Move File to Label modal ── *@
@@ -1190,61 +1252,326 @@ function handleUploadShareDrop(e) {
     }
 }
 
-function submitUploadShare() {
+// ── Helpers ───────────────────────────────────────────────────
+function bytesToPretty(bytes) {
+    if (!bytes && bytes !== 0) return '0 B';
+    var units = ['B','KB','MB','GB','TB'];
+    var idx = 0; var n = bytes;
+    while (n >= 1024 && idx < units.length - 1) { n /= 1024; idx++; }
+    return n.toFixed(idx === 0 ? 0 : 1) + ' ' + units[idx];
+}
+
+// ── localStorage resume key ───────────────────────────────────
+function resumeKey(file) {
+    return 'upload:' + encodeURIComponent(file.name) + ':' + String(file.size);
+}
+
+// ─────────────────────────────────────────────────────────────
+// chunkedUpload(opts)
+//
+// opts = {
+//   file          : File object (required)
+//   labelId       : string | '' (optional)
+//   progressBar   : HTMLElement | null
+//   progressText  : HTMLElement | null
+//   onSuccess     : function(fileId) called after UploadComplete
+//   onError       : function(err)
+// }
+//
+// Resume strategy:
+//   1. On init, store { uploadId, fileName, fileSize, chunkSizeBytes, totalChunks, labelId }
+//      in localStorage under a key derived from file name + size.
+//   2. On start, if a stored uploadId exists, call GET /File/UploadStatus to get
+//      server-reported nextChunkIndex. Resume from there.
+//   3. On success, clear the localStorage entry.
+//   4. On unrecoverable error (session gone on server), clear entry and restart.
+// ─────────────────────────────────────────────────────────────
+async function chunkedUpload(opts) {
+    var file        = opts.file;
+    var labelId     = opts.labelId || '';
+    var progressBar = opts.progressBar || null;
+    var progressText= opts.progressText || null;
+    var onProgress  = opts.onProgress  || function() {};
+    var onSuccess   = opts.onSuccess || function() {};
+    var onError     = opts.onError   || function() {};
+
+    var CHUNK_SIZE  = 10 * 1024 * 1024; // 10 MB — must match server MaxFileSizeMB logic
+    var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    if (totalChunks <= 0) { onError(new Error('Invalid file size')); return; }
+
+    var key    = resumeKey(file);
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem(key) || 'null'); } catch(e) {}
+
+    var uploadId = stored && stored.uploadId ? stored.uploadId : null;
+
+    function setProgress(pct, text) {
+        if (progressBar) {
+            progressBar.style.width = pct + '%';
+            progressBar.setAttribute('aria-valuenow', String(pct));
+        }
+        if (progressText) progressText.textContent = text;
+        onProgress(pct);
+    }
+
+    // ── 1. Init (or reuse stored uploadId) ───────────────────
+    if (!uploadId) {
+        setProgress(0, 'Initializing…');
+        var fd = new FormData();
+        fd.append('originalFileName', file.name);
+        fd.append('totalSizeBytes',   file.size);
+        fd.append('totalChunks',      totalChunks);
+        fd.append('chunkSizeBytes',   CHUNK_SIZE);
+        if (labelId) fd.append('labelId', labelId);
+
+        var initResp = await fetch('/File/UploadInit', { method: 'POST', credentials: 'same-origin', body: fd });
+        if (!initResp.ok) { onError(new Error('Init failed: HTTP ' + initResp.status)); return; }
+
+        var initData = await initResp.json();
+        if (!initData || !initData.uploadId) { onError(new Error('Invalid init response')); return; }
+
+        uploadId = initData.uploadId;
+        localStorage.setItem(key, JSON.stringify({
+            uploadId: uploadId, fileName: file.name, fileSize: file.size,
+            chunkSizeBytes: CHUNK_SIZE, totalChunks: totalChunks, labelId: labelId
+        }));
+    }
+
+    // ── 2. Query server for resume point ─────────────────────
+    var startChunk = 0;
+    try {
+        var statusResp = await fetch('/File/UploadStatus?uploadId=' + encodeURIComponent(uploadId), { credentials: 'same-origin' });
+        if (statusResp.status === 404) {
+            // Session gone (server restart / expiry) — clear and restart fresh
+            localStorage.removeItem(key);
+            await chunkedUpload(opts);   // tail-recurse once
+            return;
+        }
+        if (statusResp.ok) {
+            var status = await statusResp.json();
+            startChunk = status.nextChunkIndex || 0;
+            if (status.percent > 0) setProgress(status.percent, 'Resuming from ' + status.percent + '%…');
+        }
+    } catch(e) { /* network error — start from 0, server will accept duplicate chunks */ }
+
+    if (startChunk >= totalChunks) {
+        // All chunks already received — go straight to complete
+        setProgress(99, 'Finalizing…');
+    } else {
+        // ── 3. Upload chunks ──────────────────────────────────
+        for (var i = startChunk; i < totalChunks; i++) {
+            var start = i * CHUNK_SIZE;
+            var end   = Math.min(file.size, start + CHUNK_SIZE);
+            var blob  = file.slice(start, end);
+
+            var chunkFd = new FormData();
+            chunkFd.append('uploadId',              uploadId);
+            chunkFd.append('chunkIndex',            i);
+            chunkFd.append('totalChunks',           totalChunks);
+            chunkFd.append('chunkSizeBytes',        CHUNK_SIZE);
+            chunkFd.append('expectedTotalSizeBytes',file.size);
+            if (labelId) chunkFd.append('labelId',  labelId);
+            chunkFd.append('chunk', blob);
+
+            var chunkOk = await new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/File/UploadChunk', true);
+                xhr.upload.onprogress = function(ev) {
+                    if (!ev.lengthComputable) return;
+                    var uploaded = start + ev.loaded;
+                    var pct = Math.min(99, Math.round((uploaded / file.size) * 100));
+                    setProgress(pct, pct + '% — ' + bytesToPretty(uploaded) + ' / ' + bytesToPretty(file.size));
+                };
+                xhr.onload  = function() { xhr.status >= 200 && xhr.status < 300 ? resolve(true) : reject(new Error('Chunk HTTP ' + xhr.status)); };
+                xhr.onerror = function() { reject(new Error('Chunk network error')); };
+                xhr.send(chunkFd);
+            });
+
+            if (!chunkOk) { onError(new Error('Chunk ' + i + ' failed')); return; }
+        }
+    }
+
+    // ── 4. Complete ───────────────────────────────────────────
+    setProgress(99, 'Finalizing…');
+    var completeResp = await fetch('/File/UploadComplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ uploadId: uploadId })
+    });
+    if (!completeResp.ok) { onError(new Error('Complete failed: HTTP ' + completeResp.status)); return; }
+
+    var completeData = await completeResp.json();
+    if (!completeData || !completeData.fileId) { onError(new Error('Invalid complete response')); return; }
+
+    localStorage.removeItem(key);   // clear resume state on success
+    setProgress(100, 'Done!');
+    onSuccess(completeData.fileId);
+}
+
+// ── AJAX table refresh ────────────────────────────────────────
+function refreshFileTable() {
+    var labelId = '@Model.labelId';
+    var url = '/File/GetFilesPartial' + (labelId ? '?labelId=' + encodeURIComponent(labelId) : '');
+    fetch(url, { credentials: 'same-origin' })
+        .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+        .then(function(html) {
+            var tbody = document.getElementById('fileTableBody');
+            if (tbody) {
+                tbody.innerHTML = html;
+                // update count badge
+                var rows = tbody.querySelectorAll('tr');
+                var badge = document.getElementById('fileCountBadge');
+                if (badge) badge.textContent = rows.length + ' file(s)';
+            }
+        })
+        .catch(function(err) { console.warn('Table refresh failed:', err); });
+}
+
+// ── Upload-only modal ─────────────────────────────────────────
+function resetUploadOnlyModal() {
+    document.getElementById('uploadOnlyPickerArea').style.display = '';
+    document.getElementById('uploadOnlyProgressWrap').style.display = 'none';
+    document.getElementById('uploadOnlyFooter').style.display = '';
+    var btn = document.getElementById('uploadOnlyBtn');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-upload me-1"></i> Upload'; }
+    var bar = document.getElementById('uploadOnlyProgressBar');
+    if (bar) { bar.style.width = '0%'; bar.setAttribute('aria-valuenow', '0'); }
+    var pct = document.getElementById('uploadOnlyPct');
+    if (pct) pct.textContent = '0%';
+    var info = document.getElementById('selectedFileInfo');
+    if (info) info.style.display = 'none';
+    var input = document.getElementById('modalFileInput');
+    if (input) input.value = '';
+}
+
+document.getElementById('uploadFileModal').addEventListener('hidden.bs.modal', resetUploadOnlyModal);
+
+async function submitUploadOnly() {
+    var input = document.getElementById('modalFileInput');
+    if (!input || !input.files || input.files.length === 0) {
+        showToast('Please choose a file first.', 'danger');
+        return;
+    }
+    var file    = input.files[0];
+    var formEl  = document.getElementById('uploadForm');
+    var labelId = formEl ? (formEl.querySelector('input[name="labelId"]') || {}).value || '' : '';
+    var btn     = document.getElementById('uploadOnlyBtn');
+
+    // Switch to progress view
+    document.getElementById('uploadOnlyPickerArea').style.display = 'none';
+    document.getElementById('uploadOnlyProgressWrap').style.display = '';
+    document.getElementById('uploadOnlyFooter').style.display = 'none';
+
+    // Populate file name + icon
+    var nameEl = document.getElementById('uploadOnlyFileName');
+    if (nameEl) nameEl.textContent = file.name;
+    var iconEl = document.getElementById('uploadOnlyFileIcon');
+    if (iconEl) iconEl.innerHTML = '<i class="fa ' + getFileIconClass(file.name) + '"></i>';
+
+    var progressBar  = document.getElementById('uploadOnlyProgressBar');
+    var progressText = document.getElementById('uploadOnlyProgressText');
+    var pctEl        = document.getElementById('uploadOnlyPct');
+
+    await chunkedUpload({
+        file: file, labelId: labelId,
+        progressBar: progressBar, progressText: progressText,
+        onProgress: function(pct) { if (pctEl) pctEl.textContent = pct + '%'; },
+        onSuccess: function() {
+            var modal = bootstrap.Modal.getInstance(document.getElementById('uploadFileModal'));
+            if (modal) modal.hide();
+            showToast('File uploaded successfully.', 'success');
+            refreshFileTable();
+        },
+        onError: function(err) {
+            console.error(err);
+            showToast('Upload failed: ' + err.message, 'danger');
+            resetUploadOnlyModal();
+        }
+    });
+}
+
+// ── Upload and Share modal ────────────────────────────────────
+function resetUploadShareModal() {
+    document.getElementById('uploadSharePickerArea').style.display = '';
+    document.getElementById('uploadShareProgressWrap').style.display = 'none';
+    document.getElementById('uploadShareFooter').style.display = '';
+    var btn = document.getElementById('uploadShareBtn');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-upload me-1"></i> Upload'; }
+    var bar = document.getElementById('uploadShareProgressBar');
+    if (bar) { bar.style.width = '0%'; bar.setAttribute('aria-valuenow', '0'); }
+    var pct = document.getElementById('uploadSharePct');
+    if (pct) pct.textContent = '0%';
+    var info = document.getElementById('uploadShareSelectedFileInfo');
+    if (info) info.style.display = 'none';
+    var input = document.getElementById('uploadShareFileInput');
+    if (input) input.value = '';
+}
+
+document.getElementById('uploadShareFileModal').addEventListener('hidden.bs.modal', resetUploadShareModal);
+
+async function submitUploadShare() {
     var input = document.getElementById('uploadShareFileInput');
     if (!input || !input.files || input.files.length === 0) {
         showToast('Please choose a file first.', 'danger');
         return;
     }
+    var file    = input.files[0];
+    var formEl  = document.getElementById('uploadShareForm');
+    var labelId = formEl ? (formEl.querySelector('input[name="labelId"]') || {}).value || '' : '';
 
-    var formEl = document.getElementById('uploadShareForm');
-    var file = input.files[0];
-    var labelIdEl = formEl.querySelector('input[name="labelId"]');
-    var labelId = labelIdEl ? labelIdEl.value : '';
+    // Switch to progress view
+    document.getElementById('uploadSharePickerArea').style.display = 'none';
+    document.getElementById('uploadShareProgressWrap').style.display = '';
+    document.getElementById('uploadShareFooter').style.display = 'none';
 
-    var tokenEl = formEl.querySelector('input[name="__RequestVerificationToken"]');
-    var antiForgeryToken = tokenEl ? tokenEl.value : '';
+    // Populate file name + icon
+    var nameEl = document.getElementById('uploadShareFileName');
+    if (nameEl) nameEl.textContent = file.name;
+    var iconEl = document.getElementById('uploadShareFileIcon');
+    if (iconEl) iconEl.innerHTML = '<i class="fa ' + getFileIconClass(file.name) + '"></i>';
 
-    var fd = new FormData();
-    fd.append('file', file);
-    if (labelId) fd.append('labelId', labelId);
+    var progressBar  = document.getElementById('uploadShareProgressBar');
+    var progressText = document.getElementById('uploadShareProgressText');
+    var pctEl        = document.getElementById('uploadSharePct');
 
-    var btn = formEl.querySelector('button[onclick="submitUploadShare()"]');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Uploading...';
-    }
-
-    fetch('/File/UploadFileAndReturnId', {
-        method: 'POST',
-        headers: {
-            'RequestVerificationToken': antiForgeryToken
+    await chunkedUpload({
+        file: file, labelId: labelId,
+        progressBar: progressBar, progressText: progressText,
+        onProgress: function(pct) { if (pctEl) pctEl.textContent = pct + '%'; },
+        onSuccess: function(fileId) {
+            var modal = bootstrap.Modal.getInstance(document.getElementById('uploadShareFileModal'));
+            if (modal) modal.hide();
+            refreshFileTable();
+            openShareModal(fileId);
         },
-        credentials: 'same-origin',
-        body: fd
-    })
-    .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
-    .then(function(data) {
-        if (!data || !data.fileId) throw new Error('Invalid response');
-
-        var modalEl = document.getElementById('uploadShareFileModal');
-        var modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-
-        openShareModal(data.fileId);
-    })
-    .catch(function() {
-        showToast('Failed to upload file.', 'danger');
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa fa-upload me-1"></i> Upload';
+        onError: function(err) {
+            console.error(err);
+            showToast('Upload failed: ' + err.message, 'danger');
+            resetUploadShareModal();
         }
     });
 }
 
+// ── File icon helper (client-side) ───────────────────────────
+function getFileIconClass(fileName) {
+    if (!fileName) return 'fa-file text-secondary';
+    var ext = fileName.split('.').pop().toLowerCase();
+    var map = {
+        'pdf': 'fa-file-pdf text-danger',
+        'doc': 'fa-file-word text-primary', 'docx': 'fa-file-word text-primary',
+        'xls': 'fa-file-excel text-success', 'xlsx': 'fa-file-excel text-success',
+        'jpg': 'fa-file-image text-warning', 'jpeg': 'fa-file-image text-warning',
+        'png': 'fa-file-image text-warning', 'gif': 'fa-file-image text-warning',
+        'webp': 'fa-file-image text-warning',
+        'zip': 'fa-file-archive text-muted', 'rar': 'fa-file-archive text-muted',
+        '7z': 'fa-file-archive text-muted',
+        'txt': 'fa-file-alt text-dark',
+        'mp4': 'fa-file-video', 'mov': 'fa-file-video', 'avi': 'fa-file-video',
+        'mp3': 'fa-file-audio text-info', 'wav': 'fa-file-audio text-info'
+    };
+    return map[ext] || 'fa-file text-secondary';
+}
 
 // ── Share modal ───────────────────────────────────────────────
 var _shareData = [];   // flat list of { userId, userName, deptId, deptName }

@@ -1,0 +1,95 @@
+@model List<FileHubOrg.Domain.Entities.File.FileMetaData>
+@functions {
+    public string GetFileIconClass(string? fileName)
+    {
+        var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+        return ext switch
+        {
+            ".pdf"                                 => "fa-file-pdf text-danger",
+            ".doc" or ".docx"                      => "fa-file-word text-primary",
+            ".xls" or ".xlsx"                      => "fa-file-excel text-success",
+            ".jpg" or ".jpeg" or ".png" or ".gif"
+                or ".webp"                         => "fa-file-image text-warning",
+            ".zip" or ".rar" or ".7z"              => "fa-file-archive text-muted",
+            ".txt"                                 => "fa-file-alt text-dark",
+            ".mp4" or ".mov" or ".avi"             => "fa-file-video",
+            ".mp3" or ".wav"                       => "fa-file-audio text-info",
+            _                                      => "fa-file text-secondary"
+        };
+    }
+
+    public string FormatSize(long bytes)
+    {
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024)     return $"{bytes / 1_024.0:F0} KB";
+        return $"{bytes} B";
+    }
+}
+@foreach (var file in Model)
+{
+    <tr data-id="@file.Id"
+        data-name="@file.OrginalName?.ToLower()"
+        data-size="@file.Size"
+        data-date="@file.CreatedAt.ToString("yyyyMMddHHmm")">
+        <td class="text-center ps-3">
+            <i class="fa fa-2x @GetFileIconClass(file.OrginalName)"></i>
+        </td>
+        <td>
+            <span class="text-truncate filename d-block" title="@file.OrginalName">@file.OrginalName</span>
+        </td>
+        <td>
+            <span class="text-truncate description d-block text-muted small" title="@file.Description">
+                @(string.IsNullOrWhiteSpace(file.Description) ? "—" : file.Description)
+            </span>
+        </td>
+        <td class="text-nowrap small">@FormatSize(file.Size)</td>
+        <td class="text-nowrap small text-muted">@file.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+        <td>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0"
+                    onclick="openShareModal('@file.Id')" title="Share / manage members">
+                <i class="fa fa-users me-1"></i><span class="small">Share</span>
+            </button>
+        </td>
+        <td>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item" href="#"
+                           onclick="openPreviewModal('@file.Id','@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                            <i class="fa fa-eye me-2 text-primary"></i> Preview
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#"
+                           onclick="requestDownload('@file.Id'); return false;">
+                            <i class="fa fa-download me-2 text-success"></i> Download
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#"
+                           onclick="openShareModal('@file.Id'); return false;">
+                            <i class="fa fa-share-alt me-2 text-info"></i> Share
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#"
+                           onclick="openMoveLabelModal('@file.Id', '@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                            <i class="fa fa-tag me-2 text-warning"></i> Move
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="#"
+                           onclick="confirmDelete('@file.Id', '@Html.Raw(file.OrginalName?.Replace("'","\\'")??"")'); return false;">
+                            <i class="fa fa-trash me-2"></i> Delete
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </td>
+    </tr>
+}

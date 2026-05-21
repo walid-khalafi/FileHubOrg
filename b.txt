@@ -1,0 +1,14 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+  FileHubOrg.Domain -> C:\Users\Walid\Documents\GitHub\FileHubOrg\src\FileHubOrg\FileHubOrg.Domain\bin\Debug\net9.0\FileHubOrg.Domain.dll
+  FileHubOrg.Infrastructure -> C:\Users\Walid\Documents\GitHub\FileHubOrg\src\FileHubOrg\FileHubOrg.Infrastructure\bin\Debug\net9.0\FileHubOrg.Infrastructure.dll
+  FileHubOrg.Application -> C:\Users\Walid\Documents\GitHub\FileHubOrg\src\FileHubOrg\FileHubOrg.Application\bin\Debug\net9.0\FileHubOrg.Application.dll
+  FileHubOrg.Web -> C:\Users\Walid\Documents\GitHub\FileHubOrg\src\FileHubOrg\FileHubOrg.Web\bin\Debug\net9.0\FileHubOrg.Web.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:08.47
+
+Workload updates are available. Run `dotnet workload list` for more information.

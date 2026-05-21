@@ -19,6 +19,12 @@ namespace FileHubOrg.Application.Interfaces
         Task<string> GenerateDownloadTokenAsync(Guid fileId, string userId);
         Task<bool> UpdateFileLabelAsync(Guid fileId, Guid? labelId, string userId);
 
+        /// <summary>
+        /// Persists file metadata to the database without copying any file data.
+        /// Used by chunked upload after the temp file has already been moved to final storage.
+        /// </summary>
+        Task<FileMetaData> PersistFileMetaDataAsync(FileMetaData file);
+
         string GetRootPath();
     }
 }

@@ -283,11 +283,9 @@ namespace FileHubOrg.Application.Services
                 if (file == null)
                     return false;
 
-                // Verify the user owns this file
                 if (file.CreatedBy != userId)
                     return false;
 
-                // If labelId is provided, verify it belongs to the user
                 if (labelId.HasValue)
                 {
                     var label = await _unitOfWork.Labels.GetFirstOrDefaultAsync(x => x.Id == labelId && x.CreatedBy == userId);
@@ -305,6 +303,15 @@ namespace FileHubOrg.Application.Services
                 Console.WriteLine($"Error updating file label: {ex.Message}");
                 return false;
             }
+        }
+
+        public async Task<FileMetaData> PersistFileMetaDataAsync(FileMetaData file)
+        {
+            string? ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+            file.CreatedByIP = ipAddress ?? string.Empty;
+            await _unitOfWork.FileMetaData.AddAsync(file);
+            await _unitOfWork.SaveChangesAsync();
+            return file;
         }
     }
 }

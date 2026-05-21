@@ -1,4 +1,6 @@
 ﻿using FileHubOrg.Application.Interfaces;
+using FileHubOrg.Application.Interfaces;
+using FileHubOrg.Application.Models.ChunkedUpload;
 using FileHubOrg.Domain.Entities.File;
 using FileHubOrg.Web.Models.FileViewModels;
 
@@ -9,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Security.Claims;
 using System.Threading.Tasks;
+
 
 namespace FileHubOrg.Web.Controllers
 {
@@ -21,18 +24,24 @@ namespace FileHubOrg.Web.Controllers
         private readonly IJWTService _jwtService;
         private readonly ILabelService _labelService;
         private readonly IDepartmentService _departmentService;
+        private readonly IChunkedUploadService _chunkedUploadService;
+
 
         public FileController(IFileService fileService,
                               IApplicationUserService userService,
                               IJWTService jwtService,
-                              ILabelService labelService,IDepartmentService departmentService)
+                              ILabelService labelService,
+                              IDepartmentService departmentService,
+                              IChunkedUploadService chunkedUploadService)
         {
             _fileService = fileService;
             _userService = userService;
             _jwtService = jwtService;
             _labelService = labelService;
             _departmentService = departmentService;
+            _chunkedUploadService = chunkedUploadService;
         }
+
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         public async Task<IActionResult> Index(Guid? id)
@@ -654,7 +663,74 @@ namespace FileHubOrg.Web.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
+
+        // --------------------
+        // Chunked upload API
+        // --------------------
+        [HttpPost]
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadInit([FromForm] string originalFileName,
+                                                     [FromForm] long totalSizeBytes,
+                                                     [FromForm] Guid? labelId,
+                                                     [FromForm] int totalChunks,
+                                                     [FromForm] long chunkSizeBytes)
+        {
+            var uploadId = await _chunkedUploadService.InitAsync(originalFileName, totalSizeBytes, labelId, totalChunks, chunkSizeBytes);
+            return Ok(new UploadInitResponse
+            {
+                UploadId = uploadId,
+                TotalChunks = totalChunks,
+                ChunkSizeBytes = chunkSizeBytes
+            });
+        }
+
+        [HttpPost]
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadChunk([FromForm] Guid uploadId,
+                                                       [FromForm] int chunkIndex,
+                                                       [FromForm] int totalChunks,
+                                                       [FromForm] long chunkSizeBytes,
+                                                       [FromForm] long expectedTotalSizeBytes,
+                                                       [FromForm] Guid? labelId,
+                                                       [FromForm] IFormFile chunk)
+        {
+            if (chunk == null || chunk.Length == 0)
+                return BadRequest(new { message = "Empty chunk" });
+
+            var ok = await _chunkedUploadService.UploadChunkAsync(uploadId, chunkIndex, totalChunks, chunk);
+            if (!ok)
+                return NotFound(new { message = "Upload session not found" });
+
+            return Ok(new UploadChunkResponse { Ok = true });
+        }
+
+        [HttpPost]
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadComplete([FromBody] UploadCompleteRequest request)
+        {
+            var fileId = await _chunkedUploadService.CompleteAsync(request.UploadId);
+            return Ok(new UploadCompleteResponse { FileId = fileId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetFilesPartial(Guid? labelId)
+        {
+            var files = await _fileService.GetFilesAsync(GetUserId());
+            if (labelId.HasValue)
+                files = files.Where(x => x.LabelId == labelId).ToList();
+            return PartialView("_FileTableRows", files);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> UploadStatus([FromQuery] Guid uploadId)
+        {
+            var status = await _chunkedUploadService.GetStatusAsync(uploadId);
+            return Ok(status);
+        }
+
+
     }
+
 
     public class RemoveFileMemberRequest
     {
